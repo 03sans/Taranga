@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from app.core.database import SessionLocal
 from app.models.user import User
 from app.core.security import verify_access_token
+from typing import Callable
 
 security = HTTPBearer()
 
@@ -30,3 +31,10 @@ def get_current_user(
         raise HTTPException(status_code=401, detail="User not found")
 
     return user
+
+def require_role(*allowed_roles: str) -> Callable:
+    def checker(current_user: User = Depends(get_current_user)) ->  User:
+        if current_user.role not in allowed_roles:
+            raise HTTPException(status_code=403, detail="Forbidden")
+        return current_user
+    return checker
