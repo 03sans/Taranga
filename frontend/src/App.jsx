@@ -5,7 +5,6 @@ import StudentLogin from './pages/StudentLogin';
 import AdminDashboard from './pages/AdminDashboard';
 import TeacherDashboard from './pages/TeacherDashboard';
 import StudentDashboard from './pages/StudentDashboard';
-
 import UserManagement from './pages/UserManagement';
 import StudentManagement from './pages/StudentManagement';
 import Profile from './pages/Profile';
@@ -14,7 +13,8 @@ import NLPObservation from './pages/NLPObservation';
 import ScreeningResults from './pages/ScreeningResults';
 import StudentActivity from './pages/StudentActivity';
 import ProgressTracking from './pages/ProgressTracking';
-
+import InterventionSetup from './pages/InterventionSetup';
+import StudentProgressReport from './pages/StudentProgressReport';
 
 function App() {
   return (
@@ -24,7 +24,7 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/student-login" element={<StudentLogin />} />
-        
+
         {/* Dashboards */}
         <Route path="/admin-dashboard" element={<AdminDashboard />} />
         <Route path="/dashboard" element={<TeacherDashboard />} />
@@ -35,16 +35,20 @@ function App() {
         <Route path="/students" element={<StudentManagement />} />
         <Route path="/profile" element={<Profile />} />
 
-        {/* Screening Core UX */}
+        {/* Screening */}
         <Route path="/screening/adaptive" element={<AdaptiveScreening />} />
         <Route path="/screening/nlp" element={<NLPObservation />} />
 
         {/* Results & Analytics */}
-        <Route path="/results/:id" element={<ScreeningResults />} />
+        <Route path="/results/:studentId" element={<ScreeningResults />} />
         <Route path="/analytics" element={<ProgressTracking />} />
 
-        {/* Interventions */}
-        <Route path="/activity/:id" element={<StudentActivity />} />
+        {/* Intervention */}
+        <Route path="/students/:id/intervention" element={<InterventionSetup />} />
+        <Route path="/students/:id/progress"     element={<StudentProgressReport />} />
+
+        {/* Student activities */}
+        <Route path="/activity/:key" element={<StudentActivity />} />
       </Routes>
     </BrowserRouter>
   );

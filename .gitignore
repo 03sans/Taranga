@@ -10,3 +10,17 @@ dist/
 
 # OS
 .DS_Store
+# Python virtualenv (both naming conventions)
+venv/
+env/
+*.egg-info/
+
+# Large binary / ML model files
+*.dylib
+*.so
+*.pkl
+*.joblib
+
+# DB files
+*.db
+*.sqlite3

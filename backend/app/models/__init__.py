@@ -4,3 +4,4 @@ from app.models.screening import Screening
 from app.models.prediction import PredictionResult
 from app.models.activity import InterventionActivity
 from app.models.progress import StudentProgress
+from app.models.assignment import StudentActivityAssignment

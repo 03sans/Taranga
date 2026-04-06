@@ -1,100 +1,126 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { loginUser } from '../api';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  const successMessage = location.state?.message || '';
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    // API Call goes here
-    console.log("Logging in via API...");
-    navigate("/dashboard");
+    setError('');
+    setLoading(true);
+    try {
+      // Backend expects JSON body
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      const data = await response.json();
+
+      if (data.error || !data.access_token) {
+        setError(data.error || "Invalid credentials.");
+        return;
+      }
+
+      localStorage.setItem('access_token', data.access_token);
+      localStorage.setItem('role', data.role);
+
+      // Route based on role
+      if (data.role === 'admin') navigate('/admin-dashboard');
+      else if (data.role === 'student') navigate('/student-dashboard');
+      else navigate('/dashboard'); // teacher or parent
+    } catch (err) {
+      setError("Network error. Is the backend running?");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div style={styles.container}>
-      <div className="glass-panel" style={styles.card}>
-        <div style={styles.header}>
-          <h1 style={{ color: "var(--primary-color)" }}>TARANGA</h1>
-          <p style={{ color: "var(--text-secondary)" }}>Welcome back to the Learning Portal</p>
-        </div>
-        
-        <form onSubmit={handleLogin} style={styles.form}>
-          <div style={styles.inputGroup}>
-            <label>Email Address</label>
-            <input 
-              type="email" 
-              placeholder="Enter your email" 
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required 
-            />
-          </div>
-          
-          <div style={styles.inputGroup}>
-            <label>Password</label>
-            <input 
-              type="password" 
-              placeholder="Enter your password" 
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required 
-            />
-          </div>
-          
-          <button type="submit" className="btn btn-primary" style={{ width: "100%", marginTop: "1rem" }}>
-            Sign In
-          </button>
-        </form>
-        
-        <div style={styles.footer}>
-          <p>Don't have an account? <Link to="/register">Register here</Link></p>
-          <p style={{ marginTop: "1rem" }}>
-            Are you a student? <Link to="/student-login" style={{ color: "var(--accent-color)" }}>Student Login</Link>
+    <div className="split-layout">
+      <div className="split-left">
+        <div style={{ maxWidth: "500px", zIndex: 1 }}>
+          <h1 style={{ fontSize: "4rem", color: "white", marginBottom: "1rem", lineHeight: "1.1" }}>
+            Welcome to Taranga.
+          </h1>
+          <p style={{ fontSize: "1.25rem", color: "rgba(255,255,255,0.9)", marginBottom: "2rem" }}>
+            The vibrant platform for learning disability screening and brilliant student interventions.
           </p>
+          <div style={{ display: "flex", gap: "1rem" }}>
+            <div style={{ background: "rgba(255,255,255,0.2)", padding: "1rem", borderRadius: "var(--radius-md)", backdropFilter: "blur(10px)" }}>
+              <h3 style={{ color: "white", fontSize: "1.5rem" }}>99%</h3>
+              <p style={{ color: "rgba(255,255,255,0.8)", fontSize: "0.9rem" }}>AI Accuracy</p>
+            </div>
+            <div style={{ background: "rgba(255,255,255,0.2)", padding: "1rem", borderRadius: "var(--radius-md)", backdropFilter: "blur(10px)" }}>
+              <h3 style={{ color: "white", fontSize: "1.5rem" }}>5+</h3>
+              <p style={{ color: "rgba(255,255,255,0.8)", fontSize: "0.9rem" }}>LDs Screened</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div className="split-right">
+        <div style={{ width: "100%", maxWidth: "450px" }}>
+          <div style={{ marginBottom: "2.5rem" }}>
+            <h2 style={{ fontSize: "2.5rem", color: "var(--primary-color)", marginBottom: "0.5rem" }}>Sign In</h2>
+            <p style={{ color: "var(--text-secondary)", fontSize: "1.1rem" }}>Access your educator dashboard.</p>
+          </div>
+          
+          {successMessage && (
+            <div style={{ color: "#065F46", marginBottom: "1.5rem", background: "#D1FAE5", padding: "1rem", borderRadius: "var(--radius-sm)", fontWeight: "700" }}>
+              ✅ {successMessage}
+            </div>
+          )}
+          {error && <div style={{ color: "var(--danger-color)", marginBottom: "1.5rem", background: "#FFE4E6", padding: "1rem", borderRadius: "var(--radius-sm)", fontWeight: "700" }}>{error}</div>}
+          
+          <form onSubmit={handleLogin}>
+            <div className="form-group">
+              <label>Email Address</label>
+              <input 
+                type="email" 
+                placeholder="teacher@school.edu" 
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required 
+              />
+            </div>
+            
+            <div className="form-group">
+              <label>Password</label>
+              <input 
+                type="password" 
+                placeholder="••••••••" 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required 
+              />
+            </div>
+            
+            <button type="submit" className="btn btn-primary" style={{ width: "100%", marginTop: "1rem", padding: "1rem" }} disabled={loading}>
+              {loading ? "Authenticating..." : "Login to Workspace"}
+            </button>
+          </form>
+          
+          <div style={{ marginTop: "2.5rem", textAlign: "center", display: "flex", flexDirection: "column", gap: "1rem" }}>
+            <p style={{ color: "var(--text-secondary)", fontWeight: "600" }}>
+              Don't have an account? <Link to="/register">Create one now</Link>
+            </p>
+            <div style={{ padding: "1.5rem", background: "var(--bg-color)", borderRadius: "var(--radius-md)", border: "2px dashed var(--border-color)" }}>
+               <p style={{ color: "var(--text-primary)", fontWeight: "700" }}>Are you a student?</p>
+               <Link to="/student-login" className="btn btn-accent" style={{ marginTop: "1rem", width: "100%" }}>Student Portal Login 🚀</Link>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   );
-};
-
-const styles = {
-  container: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: '100vh',
-    background: 'linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%)',
-    padding: '2rem'
-  },
-  card: {
-    width: '100%',
-    maxWidth: '450px',
-  },
-  header: {
-    textAlign: 'center',
-    marginBottom: '2rem',
-  },
-  form: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '1rem',
-  },
-  inputGroup: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '0.5rem',
-    fontWeight: '500',
-    fontSize: '0.9rem'
-  },
-  footer: {
-    marginTop: '2rem',
-    textAlign: 'center',
-    fontSize: '0.9rem',
-    color: 'var(--text-secondary)'
-  }
 };
 
 export default Login;
