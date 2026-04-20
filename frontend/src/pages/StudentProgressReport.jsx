@@ -3,16 +3,16 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 
 const authFetch = (url, opts = {}) => {
-  const token = localStorage.getItem('access_token');
+  const token = sessionStorage.getItem('access_token');
   return fetch(url, { ...opts, headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}), ...opts.headers } });
 };
 
 const LD_META = {
-  dyslexia:    { color: '#6366F1', bg: '#EEF2FF', emoji: '📖' },
-  dyscalculia: { color: '#F59E0B', bg: '#FFFBEB', emoji: '🔢' },
-  dysgraphia:  { color: '#10B981', bg: '#ECFDF5', emoji: '✏️' },
-  nvld:        { color: '#8B5CF6', bg: '#F5F3FF', emoji: '🧩' },
-  apd:         { color: '#EF4444', bg: '#FEF2F2', emoji: '👂' },
+  dyslexia:    { color: '#6366F1', bg: '#EEF2FF', },
+  dyscalculia: { color: '#F59E0B', bg: '#FFFBEB', },
+  dysgraphia:  { color: '#10B981', bg: '#ECFDF5', },
+  nvld:        { color: '#8B5CF6', bg: '#F5F3FF', },
+  apd:         { color: '#EF4444', bg: '#FEF2F2', },
 };
 
 const fmt = (iso) => iso ? new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
@@ -20,7 +20,7 @@ const fmt = (iso) => iso ? new Date(iso).toLocaleDateString('en-IN', { day: 'num
 const StudentProgressReport = () => {
   const { id: studentId } = useParams();
   const navigate = useNavigate();
-  const role = localStorage.getItem('role') || 'teacher';
+  const role = sessionStorage.getItem('role') || 'teacher';
 
   const [data,    setData]    = useState(null);
   const [loading, setLoading] = useState(true);
@@ -28,7 +28,7 @@ const StudentProgressReport = () => {
   const [expanded, setExpanded] = useState({}); // activity key → bool
 
   useEffect(() => {
-    const token = localStorage.getItem('access_token');
+    const token = sessionStorage.getItem('access_token');
     if (!token) { navigate('/login'); return; }
     authFetch(`/api/students/${studentId}/progress`)
       .then(r => r.json())
@@ -45,7 +45,7 @@ const StudentProgressReport = () => {
       <Sidebar role={role} />
       <div className="dashboard-main" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '3rem', animation: 'spin 2s linear infinite', display: 'inline-block' }}>📊</div>
+          <div style={{ fontSize: '3rem', animation: 'spin 2s linear infinite', display: 'inline-block' }}>◌</div>
           <p style={{ color: '#64748B', marginTop: '1rem', fontWeight: '700' }}>Loading progress report…</p>
         </div>
       </div>
@@ -83,7 +83,7 @@ const StudentProgressReport = () => {
             <div>
               <button onClick={() => navigate('/students')} style={{ background: '#F1F5F9', border: 'none', borderRadius: '10px', padding: '0.45rem 0.9rem', cursor: 'pointer', fontWeight: '700', color: '#64748B', marginBottom: '0.75rem', fontSize: '0.85rem' }}>← Students</button>
               <h1 style={{ fontSize: '2rem', color: '#1E293B', margin: '0 0 0.25rem' }}>
-                📊 {student.full_name}'s Progress
+                {student.full_name}'s Progress
               </h1>
               <p style={{ color: '#64748B', margin: 0 }}>{student.grade} · {assigned_count} activities assigned</p>
             </div>
@@ -105,10 +105,10 @@ const StudentProgressReport = () => {
         {/* Summary cards */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: '1rem', marginBottom: '2.5rem' }}>
           {[
-            { label: 'Total XP', value: total_xp, icon: '⚡', color: '#6366F1', bg: '#EEF2FF' },
-            { label: 'Completed', value: completedCount, icon: '✅', color: '#10B981', bg: '#ECFDF5' },
-            { label: 'Total Attempts', value: totalAttempts, icon: '🔁', color: '#F59E0B', bg: '#FFFBEB' },
-            { label: 'Avg Score', value: `${avgScore}%`, icon: '🎯', color: '#8B5CF6', bg: '#F5F3FF' },
+            { label: 'Total XP', value: total_xp, label: 'XP', color: '#6366F1', bg: '#EEF2FF' },
+            { label: 'Completed', value: completedCount, label: 'done', color: '#10B981', bg: '#ECFDF5' },
+            { label: 'Total Attempts', value: totalAttempts, label: 'tries', color: '#F59E0B', bg: '#FFFBEB' },
+            { label: 'Avg Score', value: `${avgScore}%`, label: 'avg', color: '#8B5CF6', bg: '#F5F3FF' },
           ].map(s => (
             <div key={s.label} style={{ background: s.bg, border: `2px solid ${s.color}33`, borderRadius: '16px', padding: '1.25rem', textAlign: 'center' }}>
               <div style={{ fontSize: '1.5rem', marginBottom: '0.25rem' }}>{s.icon}</div>
@@ -121,7 +121,7 @@ const StudentProgressReport = () => {
         {/* No activities yet */}
         {activities.length === 0 && (
           <div style={{ background: 'white', borderRadius: '20px', border: '2px dashed #E2E8F0', padding: '3rem', textAlign: 'center' }}>
-            <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>🎮</div>
+            <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}></div>
             <h3 style={{ color: '#1E293B', margin: '0 0 0.5rem' }}>No attempts yet</h3>
             <p style={{ color: '#94A3B8', margin: 0 }}>The student hasn't played any activities yet. Assign activities and share their login credentials.</p>
           </div>
@@ -135,7 +135,7 @@ const StudentProgressReport = () => {
             </div>
 
             {activities.map((act, idx) => {
-              const meta = LD_META[act.ld_type] || { color: '#6366F1', bg: '#EEF2FF', emoji: '📚' };
+              const meta = LD_META[act.ld_type] || { color: '#6366F1', bg: '#EEF2FF',  };
               const isExpanded = expanded[act.activity_key];
               // Trend: compare last two attempts
               const attempts = act.attempts || [];

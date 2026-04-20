@@ -4,17 +4,17 @@ import Sidebar from '../components/Sidebar';
 
 /* ─── constants ─────────────────────────────────────────────────── */
 const DOMAIN_COLORS = {
-  dyslexia:    { bg: '#EEF2FF', border: '#6366F1', text: '#4338CA', dot: '#6366F1', emoji: '📖' },
-  dyscalculia: { bg: '#FFFBEB', border: '#F59E0B', text: '#92400E', dot: '#F59E0B', emoji: '🔢' },
-  dysgraphia:  { bg: '#ECFDF5', border: '#10B981', text: '#065F46', dot: '#10B981', emoji: '✏️' },
-  nvld:        { bg: '#F5F3FF', border: '#8B5CF6', text: '#5B21B6', dot: '#8B5CF6', emoji: '🧩' },
-  apd:         { bg: '#FEF2F2', border: '#EF4444', text: '#991B1B', dot: '#EF4444', emoji: '👂' },
+  dyslexia:    { bg: '#EEF2FF', border: '#6366F1', text: '#4338CA', dot: '#6366F1', dot: '#6366F1' },
+  dyscalculia: { bg: '#FFFBEB', border: '#F59E0B', text: '#92400E', dot: '#F59E0B', dot: '#F59E0B' },
+  dysgraphia:  { bg: '#ECFDF5', border: '#10B981', text: '#065F46', dot: '#10B981', dot: '#10B981' },
+  nvld:        { bg: '#F5F3FF', border: '#8B5CF6', text: '#5B21B6', dot: '#8B5CF6', dot: '#8B5CF6' },
+  apd:         { bg: '#FEF2F2', border: '#EF4444', text: '#991B1B', dot: '#EF4444', dot: '#EF4444' },
 };
 
 const ANSWER_LABELS = ['Never', 'Rarely', 'Sometimes', 'Often', 'Always'];
 
 const authFetch = (url, opts = {}) => {
-  const token = localStorage.getItem('access_token');
+  const token = sessionStorage.getItem('access_token');
   return fetch(url, {
     ...opts,
     headers: {
@@ -49,7 +49,7 @@ const ProgressDots = ({ answered, total, domainHistory }) => (
 /* ─── main component ─────────────────────────────────────────────── */
 const AdaptiveScreening = () => {
   const navigate  = useNavigate();
-  const role      = localStorage.getItem('role') || 'teacher';
+  const role      = sessionStorage.getItem('role') || 'teacher';
 
   // Student selection
   const [students,        setStudents]        = useState([]);
@@ -85,7 +85,7 @@ const AdaptiveScreening = () => {
   }, []);
 
   useEffect(() => {
-    const token = localStorage.getItem('access_token');
+    const token = sessionStorage.getItem('access_token');
     if (!token) { navigate('/login'); return; }
     fetchStudents();
   }, [fetchStudents, navigate]);
@@ -235,7 +235,7 @@ const AdaptiveScreening = () => {
 
         {/* How it works */}
         <div style={{ background: 'linear-gradient(135deg, #6366F1, #A855F7)', borderRadius: '20px', padding: '2rem', color: 'white', marginBottom: '2rem' }}>
-          <h2 style={{ color: 'white', margin: '0 0 1rem 0', fontSize: '1.3rem' }}>📋 How the adaptive screening works</h2>
+          <h2 style={{ color: 'white', margin: '0 0 1rem 0', fontSize: '1.3rem' }}>How the adaptive screening works</h2>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
             {[
               ['Phase 1 — Gateway', '5 broad questions, one per LD domain'],
@@ -266,7 +266,7 @@ const AdaptiveScreening = () => {
 
           {apiError && (
             <div style={{ background: '#FFF1F2', border: '2px solid #FECDD3', color: '#E11D48', borderRadius: '10px', padding: '0.85rem 1.1rem', marginBottom: '1rem', fontWeight: '700', fontSize: '0.9rem' }}>
-              ❌ {apiError}
+              {apiError}
             </div>
           )}
 
@@ -316,7 +316,7 @@ const AdaptiveScreening = () => {
                 disabled={!selectedStudent || submitting}
                 onClick={handleStart}
               >
-                {submitting ? '⏳ Starting…' : '🚀 Start Adaptive Screening'}
+                {submitting ? 'Starting…' : 'Start adaptive screening'}
               </button>
             </>
           )}
@@ -410,7 +410,7 @@ const AdaptiveScreening = () => {
         {showAbandon && (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}>
             <div style={{ background: 'white', borderRadius: '20px', padding: '2.5rem', maxWidth: '400px', width: '90%', textAlign: 'center' }}>
-              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>⚠️</div>
+              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}></div>
               <h2 style={{ color: '#1E293B', margin: '0 0 0.75rem' }}>Abandon screening?</h2>
               <p style={{ color: '#64748B', margin: '0 0 1.75rem', lineHeight: '1.6' }}>
                 Progress will be lost — in-memory sessions are not persisted. If you leave now, you'll need to start over.
@@ -433,7 +433,7 @@ const AdaptiveScreening = () => {
           </div>
           <button onClick={() => setShowAbandon(true)}
             style={{ background: '#F1F5F9', border: 'none', borderRadius: '10px', padding: '0.6rem 1rem', color: '#64748B', fontWeight: '700', cursor: 'pointer', fontSize: '0.88rem' }}>
-            ✕ Abandon
+            Abandon
           </button>
         </div>
 
@@ -507,7 +507,7 @@ const AdaptiveScreening = () => {
         {/* Error */}
         {apiError && (
           <div style={{ background: '#FFF1F2', border: '2px solid #FECDD3', color: '#E11D48', borderRadius: '10px', padding: '0.85rem 1.1rem', marginBottom: '1rem', fontWeight: '700', fontSize: '0.9rem' }}>
-            ❌ {apiError}
+            {apiError}
           </div>
         )}
 
@@ -521,7 +521,7 @@ const AdaptiveScreening = () => {
           {submitting
             ? '⏳ Saving…'
             : progress.answered >= progress.total - 1
-              ? '✅ Submit & Generate Report'
+              ? 'Submit & generate report'
               : `Next Question →  (${progress.answered + 1} / ${progress.total})`}
         </button>
 

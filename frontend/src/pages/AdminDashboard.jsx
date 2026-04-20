@@ -1,145 +1,367 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
+import { UsersIcon, GraduationCapIcon, ClipboardListIcon, TargetIcon, CheckCircleIcon, AlertTriangleIcon, SearchIcon, PlusIcon, Trash2Icon, BarChartIcon, ChevronRightIcon } from '../components/icons';
 
-// Animated counter hook
-const useCountUp = (target, duration = 1500) => {
+const authFetch = (url, opts = {}) => {
+  const token = sessionStorage.getItem('access_token');
+  return fetch(url, {
+    ...opts,
+    headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}), ...opts.headers },
+  });
+};
+
+/* ── animated counter ──────────────────────────────────────────────────── */
+const useCountUp = (target, duration = 1200) => {
   const [count, setCount] = useState(0);
   useEffect(() => {
-    let start = 0;
-    const steps = 50;
-    const increment = target / steps;
-    const timer = setInterval(() => {
-      start += increment;
-      if (start >= target) { setCount(target); clearInterval(timer); }
-      else setCount(Math.floor(start));
+    if (!target) return;
+    let frame = 0;
+    const steps = 40;
+    const inc = target / steps;
+    const id = setInterval(() => {
+      frame++;
+      setCount(frame >= steps ? target : Math.floor(inc * frame));
+      if (frame >= steps) clearInterval(id);
     }, duration / steps);
-    return () => clearInterval(timer);
+    return () => clearInterval(id);
   }, [target, duration]);
   return count;
 };
 
-const StatCard = ({ label, value, color, icon, subtext }) => {
-  const count = useCountUp(value);
+/* ── sub-components ────────────────────────────────────────────────────── */
+const StatCard = ({ label, value, color, icon: Icon, sub }) => {
+  const n = useCountUp(value);
   return (
-    <div style={{ background: 'white', borderRadius: '20px', padding: '2rem', borderTop: `6px solid ${color}`, boxShadow: '0 4px 20px rgba(0,0,0,0.05)', transition: 'all 0.3s' }}
-      onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 16px 40px rgba(0,0,0,0.1)'; }}
-      onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.05)'; }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-        <span style={{ fontSize: '0.85rem', fontWeight: '700', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</span>
-        <span style={{ fontSize: '1.75rem', background: '#F8FAFC', borderRadius: '10px', padding: '0.3rem 0.4rem' }}>{icon}</span>
+    <div style={{ background: 'white', borderRadius: '10px', padding: '1.25rem', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '0.625rem', transition: 'box-shadow 0.15s' }}
+      onMouseEnter={e => e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.08)'}
+      onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={{ fontSize: '0.72rem', fontWeight: '600', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>{label}</span>
+        <div style={{ background: `${color}18`, borderRadius: '7px', padding: '0.375rem', display: 'flex' }}>
+          <Icon size={14} style={{ color }} />
+        </div>
       </div>
-      <p style={{ fontSize: '3.5rem', fontWeight: '800', color: color, lineHeight: '1', margin: '0 0 0.5rem 0' }}>{count}</p>
-      {subtext && <p style={{ fontSize: '0.9rem', color: '#64748B', margin: 0 }}>{subtext}</p>}
+      <p style={{ fontSize: '2rem', fontWeight: '800', color, lineHeight: 1, margin: '0', letterSpacing: '-0.04em' }}>{n}</p>
+      {sub && <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>{sub}</p>}
     </div>
   );
 };
 
-const AdminDashboard = () => {
-  const [users, setUsers] = useState(null);
-  const [activity, setActivity] = useState([
-    { icon: '✅', text: 'Screening completed for Aarav Patel', time: '2 min ago', color: '#ECFDF5', textColor: '#059669' },
-    { icon: '👤', text: 'New educator registered: Ms. Priya Iyer', time: '1 hr ago', color: '#EEF2FF', textColor: '#6366F1' },
-    { icon: '⚠️', text: 'High-risk flag on Rohan Mehta\'s report', time: '3 hr ago', color: '#FFF1F2', textColor: '#E11D48' },
-    { icon: '📊', text: 'Monthly report export (Oct 2026)', time: '1 day ago', color: '#FFFBEB', textColor: '#D97706' },
-    { icon: '🎮', text: 'Sita Sharma completed "Tracing Magic"', time: '1 day ago', color: '#ECFDF5', textColor: '#059669' },
-  ]);
+const StatusBadge = ({ active }) => (
+  <span style={{ background: active ? '#ECFDF5' : '#FFF1F2', color: active ? '#059669' : '#E11D48', padding: '0.25rem 0.7rem', borderRadius: '99px', fontWeight: '800', fontSize: '0.75rem' }}>
+    {active ? '● Active' : '○ Inactive'}
+  </span>
+);
 
-  useEffect(() => {
-    const token = localStorage.getItem('access_token');
-    fetch('/api/users', { headers: token ? { Authorization: `Bearer ${token}` } : {} })
-      .then(r => r.json())
-      .then(data => setUsers(data))
-      .catch(() => setUsers(null));
-  }, []);
+const Skeleton = ({ h = 48 }) => (
+  <div style={{ background: '#E2E8F0', borderRadius: '12px', height: h, marginBottom: '0.75rem', animation: 'pulse 1.5s ease-in-out infinite' }} />
+);
+
+/* ══════════════════════════════════════════════════════════════════════════
+   MAIN COMPONENT
+══════════════════════════════════════════════════════════════════════════ */
+const AdminDashboard = () => {
+  const navigate = useNavigate();
+
+  const [stats, setStats]       = useState(null);
+  const [teachers, setTeachers] = useState([]);
+  const [loading, setLoading]   = useState(true);
+  const [search, setSearch]     = useState('');
+  const [confirm, setConfirm]   = useState(null);   // { type: 'delete'|'deactivate'|'activate', teacher }
+  const [busy, setBusy]         = useState(false);
+  const [toast, setToast]       = useState('');
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [addForm, setAddForm]   = useState({ full_name: '', email: '', password: '' });
+  const [addError, setAddError] = useState('');
+  const [adding, setAdding]     = useState(false);
+
+  const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
+
+  const loadData = useCallback(async () => {
+    const token = sessionStorage.getItem('access_token');
+    if (!token) { navigate('/login'); return; }
+    setLoading(true);
+    const [s, t] = await Promise.all([
+      authFetch('/api/users/platform-stats').then(r => r.json()).catch(() => null),
+      authFetch('/api/users/teachers').then(r => r.json()).catch(() => []),
+    ]);
+    setStats(s);
+    setTeachers(Array.isArray(t) ? t : []);
+    setLoading(false);
+  }, [navigate]);
+
+  useEffect(() => { loadData(); }, [loadData]);
+
+  /* ── teacher actions ── */
+  const doAction = async () => {
+    if (!confirm) return;
+    setBusy(true);
+    const { type, teacher } = confirm;
+    try {
+      if (type === 'delete') {
+        await authFetch(`/api/users/${teacher.id}`, { method: 'DELETE' });
+        showToast(`${teacher.full_name} removed.`);
+      } else if (type === 'deactivate') {
+        await authFetch(`/api/users/${teacher.id}/deactivate`, { method: 'POST' });
+        showToast(`${teacher.full_name} deactivated.`);
+      } else if (type === 'activate') {
+        await authFetch(`/api/users/${teacher.id}/activate`, { method: 'POST' });
+        showToast(`${teacher.full_name} re-activated.`);
+      }
+      setConfirm(null);
+      loadData();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /* ── add teacher ── */
+  const handleAdd = async (e) => {
+    e.preventDefault();
+    setAddError('');
+    if (!addForm.full_name.trim()) return setAddError('Name is required.');
+    if (!addForm.email.trim()) return setAddError('Email is required.');
+    if (addForm.password.length < 8) return setAddError('Password must be at least 8 characters.');
+    setAdding(true);
+    try {
+      const res = await authFetch('/auth/register', {
+        method: 'POST',
+        body: JSON.stringify({ full_name: addForm.full_name.trim(), email: addForm.email.trim(), password: addForm.password, role: 'teacher' }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setAddError(data.detail || 'Failed to add teacher.'); return; }
+      showToast(`Teacher ${addForm.full_name} added!`);
+      setShowAddModal(false);
+      setAddForm({ full_name: '', email: '', password: '' });
+      loadData();
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  const filtered = teachers.filter(t =>
+    t.full_name?.toLowerCase().includes(search.toLowerCase()) ||
+    t.email?.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const LD_COLORS = {
+    dyslexia: '#6366F1', dyscalculia: '#F59E0B', dysgraphia: '#10B981', nvld: '#8B5CF6', apd: '#EF4444',
+  };
 
   return (
     <div className="dashboard-layout">
       <Sidebar role="admin" />
       <div className="dashboard-main">
-        {/* Header */}
-        <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
+
+        {/* ── Toast ────────────────────────────────────────────────── */}
+        {toast && (
+          <div style={{ position: 'fixed', top: '1.25rem', right: '1.25rem', background: '#1E293B', color: 'white', borderRadius: '8px', padding: '0.75rem 1.25rem', fontWeight: '600', fontSize: '0.875rem', zIndex: 999, boxShadow: '0 8px 32px rgba(0,0,0,0.25)', animation: 'fadeIn 0.3s ease', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <CheckCircleIcon size={14} style={{ color: '#4ADE80' }} /> {toast}
+          </div>
+        )}
+
+        {/* ── Header ───────────────────────────────────────────────── */}
+        <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2.5rem', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
-            <h1 style={{ fontSize: '2.25rem', color: '#1E293B', margin: '0 0 0.25rem 0' }}>Platform Overview</h1>
-            <p style={{ color: '#64748B', margin: 0 }}>Real-time metrics for the Taranga screening system.</p>
+            <h1 style={{ fontSize: '1.5rem', color: 'var(--text)', margin: '0 0 0.125rem', fontWeight: '800', letterSpacing: '-0.03em' }}>Platform overview</h1>
+            <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: '0.875rem' }}>Real-time metrics and educator management.</p>
           </div>
-          <div style={{ display: 'flex', gap: '0.75rem' }}>
-            <button className="btn" style={{ background: '#EEF2FF', color: '#6366F1', border: 'none' }}>📄 Export Report</button>
-            <Link to="/users" className="btn btn-primary">+ Add Educator</Link>
-          </div>
+          <button onClick={() => setShowAddModal(true)} className="btn btn-primary" style={{ gap: '0.4rem' }}><PlusIcon size={13} />Add educator</button>
         </header>
 
-        {/* Stat Cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
-          <StatCard label="Total Users" value={users?.length || 142} color="#6366F1" icon="👥" subtext="Educators & Parents" />
-          <StatCard label="Active Screenings" value={89} color="#10B981" icon="📝" subtext="This month" />
-          <StatCard label="Interventions Assigned" value={34} color="#F59E0B" icon="🎯" subtext="Across 5 LD types" />
-          <StatCard label="High-Risk Students" value={12} color="#F43F5E" icon="⚠️" subtext="Requiring immediate action" />
+        {/* ── Stat Cards ───────────────────────────────────────────── */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '1rem', marginBottom: '1.75rem' }}>
+          {loading ? [1,2,3,4,5].map(i => <Skeleton key={i} h={120} />) : <>
+            <StatCard label="Total Educators"   value={stats?.total_teachers || 0}              color="#7C3AED" icon={UsersIcon}          sub="Registered teachers" />
+            <StatCard label="Active Educators"  value={stats?.active_teachers || 0}             color="#10B981" icon={CheckCircleIcon}    sub="Currently active" />
+            <StatCard label="Total Students"    value={stats?.total_students || 0}              color="#6366F1" icon={GraduationCapIcon}  sub="Across all classes" />
+            <StatCard label="Screenings Run"    value={stats?.total_screenings || 0}            color="#F59E0B" icon={ClipboardListIcon}  sub="All time" />
+            <StatCard label="In Intervention"   value={stats?.students_with_interventions || 0} color="#EF4444" icon={TargetIcon}         sub="Students in games" />
+          </>}
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '2rem', marginBottom: '2.5rem' }}>
-          {/* Quick Operations */}
-          <div>
-            <h2 style={{ fontSize: '1.4rem', marginBottom: '1.25rem', color: '#1E293B' }}>Quick Operations</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-              {[
-                { to: '/users', icon: '👥', label: 'Manage Educators', desc: 'Approve & modify accounts', bg: 'linear-gradient(135deg, #EEF2FF 0%, white 100%)', color: '#6366F1' },
-                { to: '/students', icon: '🎓', label: 'Manage Students', desc: 'Audit student profiles', bg: 'linear-gradient(135deg, #ECFDF5 0%, white 100%)', color: '#10B981' },
-                { to: '/screening/adaptive', icon: '📝', label: 'New Screening', desc: 'Start a fresh assessment', bg: 'linear-gradient(135deg, #FFF7ED 0%, white 100%)', color: '#F59E0B' },
-                { to: '/analytics', icon: '📈', label: 'View Analytics', desc: 'Progress & engagement data', bg: 'linear-gradient(135deg, #EFF6FF 0%, white 100%)', color: '#0EA5E9' },
-              ].map(item => (
-                <Link key={item.to} to={item.to} style={{ background: item.bg, borderRadius: '16px', padding: '1.5rem', border: '2px solid #F1F5F9', textDecoration: 'none', display: 'block', transition: 'all 0.2s' }}
-                  onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 10px 30px rgba(0,0,0,0.08)'; }}
-                  onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}>
-                  <div style={{ fontSize: '1.75rem', marginBottom: '0.75rem' }}>{item.icon}</div>
-                  <div style={{ fontWeight: '800', fontSize: '1rem', color: item.color, marginBottom: '0.25rem' }}>{item.label}</div>
-                  <div style={{ fontSize: '0.85rem', color: '#64748B' }}>{item.desc}</div>
-                </Link>
-              ))}
+        {/* ── Educator Management ───────────────────────────────────── */}
+        <div style={{ background: 'white', borderRadius: '10px', border: '1px solid var(--border)', overflow: 'hidden' }}>
+          <div style={{ padding: '0.875rem 1.25rem', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem' }}>
+            <h2 style={{ margin: 0, fontSize: '0.9375rem', color: 'var(--text)', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><UsersIcon size={15} style={{ color: 'var(--primary)' }} />Educator accounts</h2>
+            <div style={{ position: 'relative' }}>
+              <SearchIcon size={13} style={{ position: 'absolute', left: '0.6rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-placeholder)', pointerEvents: 'none' }} />
+              <input type="text" placeholder="Search educators…" value={search} onChange={e => setSearch(e.target.value)}
+                style={{ paddingLeft: '2rem', width: '220px', fontSize: '0.8125rem' }} />
             </div>
           </div>
 
-          {/* Activity Feed */}
-          <div>
-            <h2 style={{ fontSize: '1.4rem', marginBottom: '1.25rem', color: '#1E293B' }}>Recent Activity</h2>
-            <div style={{ background: 'white', borderRadius: '20px', padding: '1.5rem', border: '2px solid #E2E8F0' }}>
-              {activity.map((item, i) => (
-                <div key={i} style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', paddingBottom: i < activity.length - 1 ? '1rem' : 0, marginBottom: i < activity.length - 1 ? '1rem' : 0, borderBottom: i < activity.length - 1 ? '1px solid #F1F5F9' : 'none' }}>
-                  <span style={{ fontSize: '1.25rem', background: item.color, width: '36px', height: '36px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{item.icon}</span>
-                  <div style={{ flex: 1 }}>
-                    <p style={{ margin: 0, fontSize: '0.9rem', color: '#1E293B', fontWeight: '600' }}>{item.text}</p>
-                    <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.8rem', color: '#94A3B8' }}>{item.time}</p>
-                  </div>
-                </div>
-              ))}
+          {loading ? (
+            <div style={{ padding: '1.5rem 2rem' }}><Skeleton /><Skeleton /><Skeleton /></div>
+          ) : filtered.length === 0 ? (
+            <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+              <UsersIcon size={28} style={{ color: 'var(--text-placeholder)', margin: '0 auto 0.75rem', display: 'block' }} />
+              <p style={{ fontWeight: '600', fontSize: '0.9rem' }}>No educators found.</p>
             </div>
-          </div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ borderBottom: '2px solid #F1F5F9' }}>
+                    {['Educator', 'Email', 'Students', 'Screenings', 'Status', 'Actions'].map(h => (
+                      <th key={h} style={{ padding: '0.85rem 1.25rem', textAlign: 'left', color: '#94A3B8', fontWeight: '700', fontSize: '0.75rem', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((t, i) => (
+                    <tr key={t.id} style={{ borderBottom: i < filtered.length - 1 ? '1px solid #F8FAFC' : 'none', transition: 'background 0.15s' }}
+                      onMouseEnter={e => e.currentTarget.style.background = '#FAFAFA'}
+                      onMouseLeave={e => e.currentTarget.style.background = ''}>
+                      <td style={{ padding: '1rem 1.25rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                          <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'linear-gradient(135deg,#6366F1,#8B5CF6)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: '900', fontSize: '0.95rem', flexShrink: 0 }}>
+                            {t.full_name?.charAt(0) || '?'}
+                          </div>
+                          <span style={{ fontWeight: '700', color: '#1E293B', fontSize: '0.92rem' }}>{t.full_name}</span>
+                        </div>
+                      </td>
+                      <td style={{ padding: '1rem 1.25rem', color: '#64748B', fontSize: '0.85rem' }}>{t.email}</td>
+                      <td style={{ padding: '1rem 1.25rem' }}>
+                        <span style={{ fontWeight: '800', color: '#6366F1', fontSize: '1.05rem' }}>{t.student_count}</span>
+                      </td>
+                      <td style={{ padding: '1rem 1.25rem' }}>
+                        <span style={{ fontWeight: '800', color: '#10B981', fontSize: '1.05rem' }}>{t.screening_count}</span>
+                      </td>
+                      <td style={{ padding: '1rem 1.25rem' }}>
+                        <StatusBadge active={t.is_active} />
+                      </td>
+                      <td style={{ padding: '1rem 1.25rem' }}>
+                        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                          {t.is_active ? (
+                            <button onClick={() => setConfirm({ type: 'deactivate', teacher: t })}
+                              style={{ background: '#FFFBEB', color: '#D97706', border: '2px solid #FDE68A', borderRadius: '8px', padding: '0.35rem 0.75rem', fontSize: '0.78rem', fontWeight: '800', cursor: 'pointer' }}>
+                              Deactivate
+                            </button>
+                          ) : (
+                            <button onClick={() => setConfirm({ type: 'activate', teacher: t })}
+                              style={{ background: '#ECFDF5', color: '#059669', border: '2px solid #A7F3D0', borderRadius: '8px', padding: '0.35rem 0.75rem', fontSize: '0.78rem', fontWeight: '800', cursor: 'pointer' }}>
+                              Activate
+                            </button>
+                          )}
+                          <button onClick={() => setConfirm({ type: 'delete', teacher: t })}
+                            style={{ background: '#FFF1F2', color: '#E11D48', border: '2px solid #FECDD3', borderRadius: '8px', padding: '0.35rem 0.75rem', fontSize: '0.78rem', fontWeight: '800', cursor: 'pointer' }}>
+                            Remove
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
 
-        {/* LD Distribution Bar */}
-        <div style={{ background: 'white', borderRadius: '20px', padding: '2rem', border: '2px solid #E2E8F0' }}>
-          <h2 style={{ fontSize: '1.4rem', marginBottom: '0.5rem', color: '#1E293B' }}>LD Detection Distribution</h2>
-          <p style={{ color: '#64748B', fontSize: '0.95rem', marginBottom: '1.5rem' }}>Percentage of screened students flagged for each learning difficulty type.</p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            {[
-              { label: 'Dyslexia', pct: 68, color: '#E11D48' },
-              { label: 'Dysgraphia', pct: 45, color: '#7C3AED' },
-              { label: 'Dyscalculia', pct: 30, color: '#D97706' },
-              { label: 'APD', pct: 22, color: '#1D4ED8' },
-              { label: 'NVLD', pct: 15, color: '#059669' },
-            ].map((item, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                <div style={{ width: '120px', textAlign: 'right', fontWeight: '700', fontSize: '0.9rem', color: '#475569', flexShrink: 0 }}>{item.label}</div>
-                <div style={{ flex: 1, height: '10px', background: '#F1F5F9', borderRadius: '5px', overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${item.pct}%`, background: item.color, borderRadius: '5px', animation: 'growBar 1s ease forwards' }} />
-                </div>
-                <div style={{ width: '40px', fontWeight: '800', fontSize: '0.9rem', color: item.color }}>{item.pct}%</div>
+        {/* ── Quick Links ──────────────────────────────────────────── */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.875rem', marginTop: '1.5rem' }}>
+          {[
+            { to: '/analytics', icon: BarChartIcon,  label: 'Analytics', desc: 'Platform-wide data', color: '#7C3AED' },
+            { to: '/users',     icon: UsersIcon,     label: 'All Users',  desc: 'Every registered account', color: '#10B981' },
+          ].map(item => (
+            <Link key={item.to} to={item.to}
+              style={{ background: 'white', border: '1px solid var(--border)', borderRadius: '10px', padding: '1rem', textDecoration: 'none', display: 'flex', gap: '0.75rem', alignItems: 'center', transition: 'all 0.15s' }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = item.color; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.06)'; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.boxShadow = 'none'; }}>
+              <div style={{ background: `${item.color}15`, borderRadius: '8px', padding: '0.5rem', display: 'flex' }}>
+                <item.icon size={16} style={{ color: item.color }} />
               </div>
-            ))}
+              <div>
+                <p style={{ margin: 0, fontWeight: '700', color: 'var(--text)', fontSize: '0.875rem' }}>{item.label}</p>
+                <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>{item.desc}</p>
+              </div>
+            </Link>
+          ))}
+        </div>
+
+      </div>
+
+      {/* ── Confirm Dialog ───────────────────────────────────────────── */}
+      {confirm && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300, padding: '1rem' }}
+          onClick={e => e.target === e.currentTarget && !busy && setConfirm(null)}>
+          <div style={{ background: 'white', borderRadius: '12px', padding: '1.5rem', maxWidth: '400px', width: '100%', boxShadow: '0 25px 60px rgba(0,0,0,0.25)' }}>
+            <h3 style={{ color: 'var(--text)', margin: '0 0 0.375rem', fontSize: '1rem', fontWeight: '700' }}>
+              {confirm.type === 'delete' ? 'Remove educator' : confirm.type === 'deactivate' ? 'Deactivate educator' : 'Activate educator'}
+            </h3>
+            <p style={{ textAlign: 'center', color: '#64748B', fontSize: '0.9rem', margin: '0 0 1.75rem' }}>
+              {confirm.type === 'delete'
+                ? <>Are you sure you want to permanently remove <strong>{confirm.teacher.full_name}</strong>? Their students will remain in the system.</>
+                : confirm.type === 'deactivate'
+                ? <>This will prevent <strong>{confirm.teacher.full_name}</strong> from logging in.</>
+                : <>This will re-enable <strong>{confirm.teacher.full_name}</strong>'s access.</>}
+            </p>
+            <div style={{ display: 'flex', gap: '0.625rem' }}>
+              <button onClick={() => setConfirm(null)} disabled={busy}
+                style={{ flex: 1, background: '#F1F5F9', border: 'none', borderRadius: '8px', padding: '0.625rem', fontWeight: '600', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+                Cancel
+              </button>
+              <button onClick={doAction} disabled={busy}
+                style={{ flex: 1, background: confirm.type === 'activate' ? '#10B981' : confirm.type === 'deactivate' ? '#F59E0B' : '#EF4444', border: 'none', borderRadius: '8px', padding: '0.625rem', fontWeight: '700', cursor: 'pointer', color: 'white', fontSize: '0.875rem' }}>
+                {busy ? 'Working…' : confirm.type === 'activate' ? 'Activate' : confirm.type === 'deactivate' ? 'Deactivate' : 'Remove'}
+              </button>
+            </div>
           </div>
         </div>
-        <style>{`@keyframes growBar { from { width: 0 } }`}</style>
-      </div>
+      )}
+
+      {/* ── Add Educator Modal ────────────────────────────────────────── */}
+      {showAddModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300, padding: '1rem' }}
+          onClick={e => e.target === e.currentTarget && !adding && setShowAddModal(false)}>
+          <div style={{ background: 'white', borderRadius: '24px', padding: '2.5rem', maxWidth: '460px', width: '100%', boxShadow: '0 25px 60px rgba(0,0,0,0.3)' }}>
+            <h2 style={{ fontSize: '1.6rem', color: '#1E293B', margin: '0 0 0.4rem' }}>Add Educator</h2>
+            <p style={{ color: '#64748B', margin: '0 0 1.75rem', fontSize: '0.9rem' }}>Create a teacher account for a new educator.</p>
+
+            {addError && (
+              <div style={{ background: '#FFF1F2', border: '2px solid #FECDD3', color: '#E11D48', borderRadius: '12px', padding: '0.75rem 1rem', marginBottom: '1rem', fontWeight: '700', fontSize: '0.88rem' }}>
+                {addError}
+              </div>
+            )}
+
+            <form onSubmit={handleAdd} noValidate>
+              {[
+                { label: 'Full Name', key: 'full_name', type: 'text', placeholder: 'e.g. Ms. Priya Sharma' },
+                { label: 'Email',     key: 'email',     type: 'email', placeholder: 'priya@school.edu' },
+                { label: 'Password',  key: 'password',  type: 'password', placeholder: 'Min 8 chars' },
+              ].map(f => (
+                <div key={f.key} className="form-group" style={{ marginBottom: '1.25rem' }}>
+                  <label style={{ display: 'block', fontWeight: '700', color: '#475569', marginBottom: '0.4rem', fontSize: '0.88rem' }}>{f.label}</label>
+                  <input
+                    type={f.type}
+                    placeholder={f.placeholder}
+                    value={addForm[f.key]}
+                    onChange={e => { setAddForm(p => ({ ...p, [f.key]: e.target.value })); setAddError(''); }}
+                    style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '12px', border: '2px solid #E2E8F0', fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box' }}
+                  />
+                </div>
+              ))}
+              <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
+                <button type="button" onClick={() => setShowAddModal(false)} disabled={adding}
+                  style={{ flex: 1, background: '#F1F5F9', border: 'none', borderRadius: '14px', padding: '0.9rem', fontWeight: '700', cursor: 'pointer', color: '#64748B' }}>
+                  Cancel
+                </button>
+                <button type="submit" disabled={adding}
+                  style={{ flex: 2, background: 'var(--primary)', border: 'none', borderRadius: '8px', padding: '0.625rem', fontWeight: '700', cursor: 'pointer', color: 'white', fontSize: '0.875rem' }}>
+                  {adding ? 'Adding…' : 'Add educator'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes pulse  { 0%,100%{opacity:1} 50%{opacity:0.4} }
+        @keyframes fadeIn { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:translateY(0)} }
+        input:focus { border-color: #6366F1 !important; outline: none; box-shadow: 0 0 0 3px rgba(99,102,241,0.1); }
+      `}</style>
     </div>
   );
 };

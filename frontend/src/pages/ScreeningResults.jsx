@@ -6,21 +6,22 @@ import { generateReportPDF } from '../utils/generateReportPDF';
 
 /* ─── constants ─────────────────────────────────────────────────── */
 const LD_META = {
-  dyslexia:    { label: 'Dyslexia',    color: '#6366F1', bg: '#EEF2FF', emoji: '📖', short: 'Reading & spelling difficulties' },
-  dyscalculia: { label: 'Dyscalculia', color: '#F59E0B', bg: '#FFFBEB', emoji: '🔢', short: 'Number & arithmetic difficulties' },
-  dysgraphia:  { label: 'Dysgraphia',  color: '#10B981', bg: '#ECFDF5', emoji: '✏️', short: 'Handwriting & motor difficulties' },
-  nvld:        { label: 'NVLD',        color: '#8B5CF6', bg: '#F5F3FF', emoji: '🧩', short: 'Spatial & social learning difficulties' },
-  apd:         { label: 'APD',         color: '#EF4444', bg: '#FEF2F2', emoji: '👂', short: 'Auditory processing difficulties' },
+  dyslexia:    { label: 'Dyslexia',    color: '#6366F1', bg: '#EEF2FF', short: 'Reading & spelling difficulties' },
+  dyscalculia: { label: 'Dyscalculia', color: '#F59E0B', bg: '#FFFBEB', short: 'Number & arithmetic difficulties' },
+  dysgraphia:  { label: 'Dysgraphia',  color: '#10B981', bg: '#ECFDF5', short: 'Handwriting & motor difficulties' },
+  nvld:        { label: 'NVLD',        color: '#8B5CF6', bg: '#F5F3FF', short: 'Spatial & social learning difficulties' },
+  apd:         { label: 'APD',         color: '#EF4444', bg: '#FEF2F2', short: 'Auditory processing difficulties' },
 };
 
 const authFetch = (url, opts = {}) => {
-  const token = localStorage.getItem('access_token');
+  const token = sessionStorage.getItem('access_token');
   return fetch(url, { ...opts, headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}), ...opts.headers } });
 };
 
 const fmt = (iso) => {
   if (!iso) return '—';
-  return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const zIso = iso.endsWith('Z') ? iso : iso + 'Z';
+  return new Date(zIso).toLocaleDateString('en-IN', { timeZone: 'Asia/Kathmandu', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
 };
 
 /* ─── animated gauge ─────────────────────────────────────────────── */
@@ -124,7 +125,7 @@ const ScreeningHistory = ({ history, currentScreeningId }) => {
   return (
     <div style={{ background: 'white', borderRadius: '20px', border: '2px solid #E2E8F0', overflow: 'hidden' }}>
       <div style={{ padding: '1.5rem 2rem', borderBottom: '2px solid #F1F5F9' }}>
-        <h2 style={{ color: '#1E293B', margin: 0, fontSize: '1.2rem', fontWeight: '800' }}>📜 Screening History</h2>
+        <h2 style={{ color: '#1E293B', margin: 0, fontSize: '1.2rem', fontWeight: '800' }}>Screening History</h2>
         <p style={{ color: '#64748B', margin: '0.25rem 0 0', fontSize: '0.88rem' }}>
           All previous screenings are preserved — nothing is overwritten.
         </p>
@@ -171,9 +172,15 @@ const ScreeningHistory = ({ history, currentScreeningId }) => {
                   );
                 })}
                 <td style={{ padding: '1rem' }}>
-                  <span style={{ background: topMeta.bg, color: topMeta.color, padding: '0.22rem 0.65rem', borderRadius: '99px', fontWeight: '800', fontSize: '0.78rem' }}>
-                    {topMeta.emoji} {topMeta.label}
-                  </span>
+                  {topLd[1] === 0 ? (
+                    <span style={{ background: '#F8FAFC', color: '#94A3B8', border: '1px solid #E2E8F0', padding: '0.22rem 0.65rem', borderRadius: '99px', fontWeight: '800', fontSize: '0.78rem' }}>
+                      Typical
+                    </span>
+                  ) : (
+                    <span style={{ background: topMeta.bg, color: topMeta.color, padding: '0.22rem 0.65rem', borderRadius: '99px', fontWeight: '800', fontSize: '0.78rem' }}>
+                      {topMeta.emoji} {topMeta.label}
+                    </span>
+                  )}
                 </td>
               </tr>
             );
@@ -193,7 +200,7 @@ const Skeleton = ({ h = 120 }) => (
 const ScreeningResults = () => {
   const { studentId } = useParams();
   const location      = useLocation();
-  const role          = localStorage.getItem('role') || 'teacher';
+  const role          = sessionStorage.getItem('role') || 'teacher';
   const [downloading, setDownloading] = useState(false);
 
   const [report,   setReport]   = useState(location.state?.report || null);
@@ -285,7 +292,7 @@ const ScreeningResults = () => {
         {/* ── High risk alert ─────────────────────────────────────── */}
         {!loading && highRisk.length > 0 && (
           <div style={{ background: 'linear-gradient(135deg,#FFF7ED,#FFFBEB)', border: '2px solid #FDE68A', borderRadius: '16px', padding: '1.25rem 1.75rem', marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <span style={{ fontSize: '2rem' }}>⚠️</span>
+            <span style={{ fontSize: '2rem' }}></span>
             <div>
               <strong style={{ color: '#92400E' }}>High-risk indicators detected</strong>
               <p style={{ color: '#B45309', margin: '0.2rem 0 0', fontSize: '0.9rem' }}>
@@ -297,7 +304,7 @@ const ScreeningResults = () => {
 
         {error && !loading && (
           <div style={{ background: '#FFF1F2', border: '2px solid #FECDD3', color: '#E11D48', borderRadius: '14px', padding: '2rem', textAlign: 'center', marginBottom: '2rem' }}>
-            <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>📋</div>
+            <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}></div>
             <p style={{ fontWeight: '800', margin: 0 }}>{error}</p>
             <Link to="/screening/adaptive" style={{ color: '#6366F1', fontWeight: '700', marginTop: '0.75rem', display: 'inline-block' }}>Start a screening →</Link>
           </div>
@@ -313,7 +320,7 @@ const ScreeningResults = () => {
             ? <><Skeleton h={180} /><Skeleton h={120} /></>
             : !error && (
               <div style={{ background: 'white', borderRadius: '20px', border: '2px solid #E2E8F0', padding: '2rem', marginBottom: '2rem' }}>
-                <h2 style={{ color: '#1E293B', margin: '0 0 1.5rem', fontSize: '1.2rem' }}>📊 Probability Scores</h2>
+                <h2 style={{ color: '#1E293B', margin: '0 0 1.5rem', fontSize: '1.2rem' }}>Probability scores</h2>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '1rem' }}>
                   {Object.entries(LD_META).map(([ld, meta]) => (
                     <Gauge key={ld} score={scores[ld] || 0} color={meta.color} label={meta.label} emoji={meta.emoji} />
@@ -326,7 +333,7 @@ const ScreeningResults = () => {
           {/* ── AI Narratives ─────────────────────────────────────── */}
           {!loading && !error && explanations && Object.keys(explanations).length > 0 && (
             <section style={{ marginBottom: '2rem' }}>
-              <h2 style={{ color: '#1E293B', margin: '0 0 1.25rem', fontSize: '1.2rem' }}>🧠 AI Explanations</h2>
+              <h2 style={{ color: '#1E293B', margin: '0 0 1.25rem', fontSize: '1.2rem' }}>AI explanations</h2>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.1rem' }}>
                 {Object.entries(explanations).map(([ld, data]) => (
                   <NarrativeCard key={ld} ld={ld} data={data} />
@@ -339,7 +346,7 @@ const ScreeningResults = () => {
           {!loading && !error && (!explanations || Object.keys(explanations).length === 0) && (
             <div style={{ background: '#FFFBEB', border: '2px solid #FDE68A', borderRadius: '14px', padding: '1.5rem', marginBottom: '2rem' }}>
               <p style={{ color: '#92400E', margin: 0, fontWeight: '700' }}>
-                💡 Detailed AI explanations are only available immediately after completing a screening. To see full narratives and SHAP factors, run a new screening for this student.
+                Detailed AI explanations are only available immediately after completing a screening. To see full narratives and SHAP factors, run a new screening for this student.
               </p>
             </div>
           )}
@@ -354,7 +361,7 @@ const ScreeningResults = () => {
           {/* ── Score summary table ───────────────────────────────── */}
           {!loading && !error && (
             <div style={{ background: 'white', borderRadius: '20px', border: '2px solid #E2E8F0', padding: '2rem', marginBottom: '2rem' }}>
-              <h2 style={{ color: '#1E293B', margin: '0 0 1.25rem', fontSize: '1.2rem' }}>📈 Score Summary</h2>
+              <h2 style={{ color: '#1E293B', margin: '0 0 1.25rem', fontSize: '1.2rem' }}>Score summary</h2>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ borderBottom: '2px solid #E2E8F0' }}>

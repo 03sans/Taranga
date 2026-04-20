@@ -7,7 +7,6 @@ import app.models
 from app.models.user import User
 from app.core.deps import get_db , get_current_user, require_role
 from app.core.security import hash_password, verify_password, create_access_token
-from app.core.deps import get_db
 from app.models.student import Student 
 from app.schemas.user import UserCreate, UserLogin, UserOut
 from app.routers import users, students, screenings, progress, reports, dashboard, activities

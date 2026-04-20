@@ -3,7 +3,7 @@ import re
 
 class UserBase(BaseModel):
     full_name: str
-    email: EmailStr
+    email: str
     role: str = "teacher"  # default
 
     @field_validator("full_name")
@@ -41,7 +41,7 @@ class UserCreate(UserBase):
         return v
 
 class UserLogin(BaseModel):
-    email: EmailStr
+    email: str          # plain str — EmailStr rejects .local domains used internally
     password: str
 
 class UserOut(UserBase):

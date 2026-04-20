@@ -52,9 +52,10 @@ def generate_full_report(
         ],
         "progress": [
             {
-                "activity_id": pr.activity_id,
+                "activity_key": pr.activity_key,
                 "score": pr.score,
                 "time_taken": pr.time_taken_seconds,
+                "attempt_number": pr.attempt_number,
                 "date": pr.completed_at
             } for pr in progress
         ]

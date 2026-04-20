@@ -15,6 +15,8 @@ import StudentActivity from './pages/StudentActivity';
 import ProgressTracking from './pages/ProgressTracking';
 import InterventionSetup from './pages/InterventionSetup';
 import StudentProgressReport from './pages/StudentProgressReport';
+import InterventionsHub from './pages/InterventionsHub';
+
 
 function App() {
   return (
@@ -44,8 +46,10 @@ function App() {
         <Route path="/analytics" element={<ProgressTracking />} />
 
         {/* Intervention */}
+        <Route path="/interventions"              element={<InterventionsHub />} />
         <Route path="/students/:id/intervention" element={<InterventionSetup />} />
         <Route path="/students/:id/progress"     element={<StudentProgressReport />} />
+
 
         {/* Student activities */}
         <Route path="/activity/:key" element={<StudentActivity />} />

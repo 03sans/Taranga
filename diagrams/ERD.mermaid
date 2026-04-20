@@ -1,0 +1,78 @@
+erDiagram
+    USERS {
+        int id PK
+        string full_name
+        string email UK
+        string hashed_password
+        string role
+        bool is_active
+    }
+
+    STUDENTS {
+        int id PK
+        string full_name
+        date date_of_birth
+        string grade
+        int teacher_id FK
+        int parent_id FK
+        int user_id FK
+        datetime created_at
+    }
+
+    SCREENINGS {
+        int id PK
+        int student_id FK
+        int assessor_id FK
+        json answers
+        text nlp_notes
+        datetime created_at
+    }
+
+    PREDICTION_RESULTS {
+        int id PK
+        int screening_id FK
+        float dyslexia_score
+        float dyscalculia_score
+        float dysgraphia_score
+        float nvld_score
+        float apd_score
+        datetime created_at
+    }
+
+    INTERVENTION_ACTIVITIES {
+        int id PK
+        string ld_type
+        string title
+        text description
+        json interactive_data
+        datetime created_at
+    }
+
+    STUDENT_PROGRESS {
+        int id PK
+        int student_id FK
+        string activity_key
+        float score
+        int time_taken_seconds
+        int attempt_number
+        datetime completed_at
+    }
+
+    STUDENT_ACTIVITY_ASSIGNMENTS {
+        int id PK
+        int student_id FK
+        string activity_key
+        int assigned_by FK
+        datetime assigned_at
+        bool is_active
+    }
+
+    USERS ||--o{ STUDENTS : "teaches (teacher_id)"
+    USERS ||--o{ STUDENTS : "parents (parent_id)"
+    USERS ||--o| STUDENTS : "is student (user_id)"
+    STUDENTS ||--o{ SCREENINGS : "screened in"
+    USERS ||--o{ SCREENINGS : "conducts (assessor_id)"
+    SCREENINGS ||--|| PREDICTION_RESULTS : "generates"
+    STUDENTS ||--o{ STUDENT_PROGRESS : "attempts"
+    STUDENTS ||--o{ STUDENT_ACTIVITY_ASSIGNMENTS : "assigned to"
+    USERS ||--o{ STUDENT_ACTIVITY_ASSIGNMENTS : "assigns (assigned_by)"

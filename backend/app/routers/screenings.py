@@ -193,7 +193,7 @@ def complete_session(
 # LEGACY / NLP ENDPOINTS (preserved)
 # ═══════════════════════════════════════════════════════════════════════════
 
-@router.post("/nlp", response_model=ScreeningOut)
+@router.post("/nlp")
 def submit_nlp_observation(
     payload: NLPObservationCreate,
     db: Session = Depends(get_db),
@@ -209,7 +209,27 @@ def submit_nlp_observation(
     db.refresh(screening)
 
     nlp_result = analyze_observation_notes(payload.notes)
-    return {**screening.__dict__, "_nlp_analysis": nlp_result}
+    
+    prediction = PredictionResult(
+        screening_id=screening.id,
+        dyslexia_score=85.0 if nlp_result["flag_counts"]["dyslexia"] > 0 else 0.0,
+        dyscalculia_score=85.0 if nlp_result["flag_counts"]["dyscalculia"] > 0 else 0.0,
+        dysgraphia_score=85.0 if nlp_result["flag_counts"]["dysgraphia"] > 0 else 0.0,
+        nvld_score=85.0 if nlp_result["flag_counts"]["nvld"] > 0 else 0.0,
+        apd_score=85.0 if nlp_result["flag_counts"]["apd"] > 0 else 0.0,
+    )
+    db.add(prediction)
+    db.commit()
+    db.refresh(prediction)
+    result = {
+        "id": screening.id,
+        "student_id": screening.student_id,
+        "assessor_id": screening.assessor_id,
+        "nlp_notes": screening.nlp_notes,
+        "created_at": screening.created_at.isoformat(),
+        "_nlp_analysis": nlp_result
+    }
+    return result
 
 
 @router.get("/results/{student_id}")
@@ -223,25 +243,29 @@ def get_screening_results(
         db.query(PredictionResult)
         .join(Screening)
         .filter(Screening.student_id == student_id)
-        .order_by(PredictionResult.created_at.desc())
+        .order_by(Screening.created_at.desc())
         .all()
     )
 
     latest = predictions[0] if predictions else None
 
-    return {
-        "status":           "success",
-        "student_id":       student_id,
-        "screenings_count": len(screenings),
-        "latest_prediction": {
+    latest_pred_dict = None
+    if latest:
+        latest_pred_dict = {
             "screening_id":    latest.screening_id,
             "dyslexia_score":  latest.dyslexia_score,
             "dyscalculia_score": latest.dyscalculia_score,
             "dysgraphia_score":  latest.dysgraphia_score,
             "nvld_score":        latest.nvld_score,
             "apd_score":         latest.apd_score,
-            "created_at":        latest.created_at.isoformat(),
-        } if latest else None,
+            "created_at":        latest.screening.created_at.isoformat(),
+        }
+
+    return {
+        "status":           "success",
+        "student_id":       student_id,
+        "screenings_count": len(screenings),
+        "latest_prediction": latest_pred_dict,
         "all_predictions": [
             {
                 "screening_id":    p.screening_id,
@@ -250,7 +274,7 @@ def get_screening_results(
                 "dysgraphia_score":  p.dysgraphia_score,
                 "nvld_score":        p.nvld_score,
                 "apd_score":         p.apd_score,
-                "created_at":        p.created_at.isoformat(),
+                "created_at":        p.screening.created_at.isoformat(),
             }
             for p in predictions
         ],

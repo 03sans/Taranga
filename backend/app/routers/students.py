@@ -2,11 +2,13 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 from app.core.deps import get_db, require_role, get_current_user
+from app.core.security import hash_password
 from app.models.student import Student
 from app.models.user import User
 from app.models.screening import Screening
 from app.models.prediction import PredictionResult
 from app.schemas.student import StudentCreate, StudentOut
+from app.schemas.user import StudentAccountCreate
 
 router = APIRouter(prefix="/students", tags=["Students"])
 
@@ -99,7 +101,7 @@ def list_students_rich(
 
 
 # ── POST /students/ ──────────────────────────────────────────────────────────
-@router.post("/", response_model=StudentOut)
+@router.post("", response_model=StudentOut)
 def create_student(
     payload: StudentCreate,
     db: Session = Depends(get_db),
@@ -119,7 +121,7 @@ def create_student(
 
 
 # ── GET /students/ ───────────────────────────────────────────────────────────
-@router.get("/", response_model=list[StudentOut])
+@router.get("", response_model=list[StudentOut])
 def list_students(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -203,27 +205,19 @@ def delete_student(
 @router.post("/{student_id}/create-account")
 def create_student_account(
     student_id: int,
-    payload: "StudentAccountCreate",
+    payload: StudentAccountCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role("admin", "teacher")),
 ):
     """Teacher creates a login account for a student."""
-    from app.schemas.user import StudentAccountCreate
-    from app.core.security import hash_password
-
     student = db.query(Student).filter(Student.id == student_id).first()
     if not student:
         raise HTTPException(status_code=404, detail="Student not found.")
     if current_user.role == "teacher" and student.teacher_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not your student.")
 
-    # Validate via schema
-    try:
-        validated = StudentAccountCreate(**payload.model_dump())
-    except Exception as e:
-        raise HTTPException(status_code=422, detail=str(e))
-
-    pseudo_email = f"{validated.username}@taranga.local"
+    # Validate via schema — payload is already a real instance now
+    pseudo_email = f"{payload.username}@taranga.local"
 
     # Check username uniqueness
     existing = db.query(User).filter(User.email == pseudo_email).first()
@@ -235,16 +229,16 @@ def create_student_account(
         user = db.query(User).filter(User.id == student.user_id).first()
         if user:
             user.email = pseudo_email
-            user.hashed_password = hash_password(validated.password)
+            user.hashed_password = hash_password(payload.password)
             user.is_active = True
             db.commit()
-            return {"username": validated.username, "student_id": student_id, "user_id": user.id, "action": "updated"}
+            return {"username": payload.username, "student_id": student_id, "user_id": user.id, "action": "updated"}
 
     # Create new User with role=student
     new_user = User(
         full_name=student.full_name,
         email=pseudo_email,
-        hashed_password=hash_password(validated.password),
+        hashed_password=hash_password(payload.password),
         role="student",
         is_active=True,
     )
@@ -254,7 +248,7 @@ def create_student_account(
     student.user_id = new_user.id
     db.commit()
 
-    return {"username": validated.username, "student_id": student_id, "user_id": new_user.id, "action": "created"}
+    return {"username": payload.username, "student_id": student_id, "user_id": new_user.id, "action": "created"}
 
 
 # ── GET /students/{student_id}/account ──────────────────────────────────────
@@ -279,12 +273,21 @@ def get_student_account(
         return {"has_account": False, "student_id": student_id}
 
     username = user.email.replace("@taranga.local", "")
+
+    # Also return assigned activity keys for this student
+    from app.models.assignment import StudentActivityAssignment
+    assigned = db.query(StudentActivityAssignment).filter(
+        StudentActivityAssignment.student_id == student_id,
+        StudentActivityAssignment.is_active == True,
+    ).all()
+
     return {
         "has_account": True,
         "username": username,
         "student_id": student_id,
         "user_id": user.id,
         "is_active": user.is_active,
+        "assigned_activities": [a.activity_key for a in assigned],
     }
 
 

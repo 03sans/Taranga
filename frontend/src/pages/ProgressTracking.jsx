@@ -1,158 +1,244 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
+import { BarChartIcon, ActivityIcon, ClipboardListIcon, GraduationCapIcon, AlertTriangleIcon, PrinterIcon } from '../components/icons';
 
-const SVGLineChart = ({ data, color = '#6366F1' }) => {
-  const w = 600, h = 200, padX = 40, padY = 20;
-  const maxV = Math.max(...data.map(d => d.value), 1);
-  const pts = data.map((d, i) => ({
-    x: padX + (i / (data.length - 1)) * (w - padX * 2),
-    y: h - padY - (d.value / maxV) * (h - padY * 2),
-  }));
-  const linePath = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
-  const areaPath = `${linePath} L${pts[pts.length-1].x},${h-padY} L${pts[0].x},${h-padY} Z`;
+const authFetch = (url, opts = {}) => {
+  const token = sessionStorage.getItem('access_token');
+  return fetch(url, {
+    ...opts,
+    headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}), ...opts.headers },
+  });
+};
 
+const LD_META = {
+  Dyslexia:    { color: '#6366F1' },
+  Dyscalculia: { color: '#F59E0B' },
+  Dysgraphia:  { color: '#10B981' },
+  NVLD:        { color: '#8B5CF6' },
+  APD:         { color: '#EF4444' },
+};
+
+const ACTIVITY_TITLES = {
+  dys_letter_flip: 'Letter Flip', dys_rhyme_rocket: 'Rhyme Rocket', dys_word_builder: 'Word Builder', dys_spot_error: 'Spot the Error',
+  dc_number_jump: 'Number Jump', dc_math_match: 'Math Match', dc_clock_hero: 'Clock Hero', dc_pattern_find: 'Pattern Detective',
+  dg_space_squad: 'Space Squad', dg_letter_sort: 'Letter Sort', dg_copy_dash: 'Copy Challenge', dg_trace_race: 'Trace Race',
+  nv_emotion_read: 'Emotion Match', nv_map_nav: 'Map Navigator', nv_shape_fit: 'Shape Puzzle', nv_social_cue: 'Social Decoder',
+  apd_word_echo: 'Word Echo', apd_step_follow: 'Step Follower', apd_rhyme_id: 'Rhyme Radar', apd_sound_sort: 'Sound Sort',
+};
+
+/* ── mini bar chart ────────────────────────────────────────────────────── */
+const LDBar = ({ ld, pct, flagged }) => {
+  const meta = LD_META[ld] || { color: '#6366F1' };
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} style={{ width: '100%', height: 'auto', overflow: 'visible' }}>
-      <defs>
-        <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity="0.2" />
-          <stop offset="100%" stopColor={color} stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      {/* Grid lines */}
-      {[0.25, 0.5, 0.75, 1].map(t => (
-        <line key={t} x1={padX} y1={h - padY - t * (h - padY * 2)} x2={w - padX} y2={h - padY - t * (h - padY * 2)}
-          stroke="#F1F5F9" strokeWidth="1.5" />
-      ))}
-      {/* Area fill */}
-      <path d={areaPath} fill="url(#areaGrad)" />
-      {/* Line */}
-      <path d={linePath} fill="none" stroke={color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-      {/* Dots */}
-      {pts.map((p, i) => (
-        <g key={i}>
-          <circle cx={p.x} cy={p.y} r="6" fill="white" stroke={color} strokeWidth="3" />
-          <text x={p.x} y={h - 5} textAnchor="middle" fontSize="11" fill="#94A3B8" fontFamily="sans-serif">{data[i].label}</text>
-          <text x={p.x} y={p.y - 12} textAnchor="middle" fontSize="12" fill={color} fontWeight="bold" fontFamily="sans-serif">{data[i].value}%</text>
-        </g>
-      ))}
-    </svg>
+    <div style={{ marginBottom: '1rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.375rem', alignItems: 'center' }}>
+        <span style={{ fontWeight: '600', fontSize: '0.8125rem', color: 'var(--text)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: meta.color, display: 'inline-block', flexShrink: 0 }} />{ld}
+        </span>
+        <div style={{ display: 'flex', gap: '0.625rem', alignItems: 'center' }}>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '500' }}>{flagged} flagged</span>
+          <span style={{ fontWeight: '700', color: meta.color, fontSize: '0.875rem', minWidth: '36px', textAlign: 'right' }}>{pct}%</span>
+        </div>
+      </div>
+      <div style={{ height: '6px', background: '#F1F5F9', borderRadius: '3px', overflow: 'hidden' }}>
+        <div style={{ height: '100%', width: `${pct}%`, background: meta.color, borderRadius: '3px', transition: 'width 1.2s cubic-bezier(0.25,0.46,0.45,0.94)' }} />
+      </div>
+    </div>
   );
 };
 
-const weekData = [
-  { label: 'Mon', value: 62 }, { label: 'Tue', value: 75 }, { label: 'Wed', value: 68 },
-  { label: 'Thu', value: 85 }, { label: 'Fri', value: 91 }
-];
+/* ── score chip ─────────────────────────────────────────────────────────── */
+const ScoreChip = ({ score }) => {
+  const color = score >= 80 ? '#059669' : score >= 60 ? '#D97706' : '#E11D48';
+  const bg    = score >= 80 ? '#ECFDF5' : score >= 60 ? '#FFFBEB' : '#FFF1F2';
+  return <span style={{ background: bg, color, padding: '0.2rem 0.6rem', borderRadius: '8px', fontWeight: '800', fontSize: '0.85rem' }}>{score}%</span>;
+};
 
+const Skeleton = ({ h = 60 }) => (
+  <div style={{ background: '#E2E8F0', borderRadius: '12px', height: h, marginBottom: '0.75rem', animation: 'pulse 1.5s ease-in-out infinite' }} />
+);
+
+/* ── relative time ──────────────────────────────────────────────────────── */
+const relTime = (iso) => {
+  const diff = (Date.now() - new Date(iso).getTime()) / 1000;
+  if (diff < 60) return `${Math.round(diff)}s ago`;
+  if (diff < 3600) return `${Math.round(diff / 60)} min ago`;
+  if (diff < 86400) return `${Math.round(diff / 3600)} hr ago`;
+  return `${Math.round(diff / 86400)} day${Math.round(diff / 86400) > 1 ? 's' : ''} ago`;
+};
+
+/* ══════════════════════════════════════════════════════════════════════════
+   MAIN COMPONENT
+══════════════════════════════════════════════════════════════════════════ */
 const ProgressTracking = () => {
-  const [activities, setActivities] = useState([
-    { name: 'Aarav Patel',  activity: 'Letter Catch',   score: 95, status: 'completed', color: '#059669', bg: '#ECFDF5', time: '5 min ago' },
-    { name: 'Sita Sharma', activity: 'Tracing Magic',   score: 80, status: 'completed', color: '#059669', bg: '#ECFDF5', time: '2 hr ago' },
-    { name: 'John Doe',    activity: 'Number Sequence', score: null,status: 'in-progress',color:'#D97706', bg: '#FFFBEB', time: '3 hr ago' },
-    { name: 'Priya Nair',  activity: 'Rhyme Match',     score: 72, status: 'completed', color: '#6366F1', bg: '#EEF2FF', time: '1 day ago' },
-    { name: 'Rohan Mehta', activity: 'Letter Catch',    score: 55, status: 'completed', color: '#D97706', bg: '#FFFBEB', time: '2 days ago' },
-  ]);
-  const role = localStorage.getItem('role') || 'teacher';
+  const role = sessionStorage.getItem('role') || 'teacher';
+  const navigate = useNavigate();
+
+  const [data, setData]       = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState('');
+
+  useEffect(() => {
+    const token = sessionStorage.getItem('access_token');
+    if (!token) { navigate('/login'); return; }
+
+    authFetch('/api/users/analytics')
+      .then(r => {
+        if (r.status === 401) {
+          sessionStorage.removeItem('access_token');
+          sessionStorage.removeItem('role');
+          navigate('/login');
+          throw new Error('Unauthorized');
+        }
+        return r.json();
+      })
+      .then(d => {
+        if (d.detail) { setError('Could not load analytics data.'); return; }
+        setData(d);
+      })
+      .catch((err) => {
+        if (err.message !== 'Unauthorized') setError('Network error loading analytics.');
+      })
+      .finally(() => setLoading(false));
+  }, [navigate]);
+
+  const summary = data?.summary || {};
+  const ldDist  = data?.ld_distribution || [];
+  const recent  = data?.recent_activity || [];
 
   return (
     <div className="dashboard-layout">
       <Sidebar role={role} />
       <div className="dashboard-main">
+
         {/* Header */}
-        <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+        <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2.5rem', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
-            <h1 style={{ fontSize: '2.25rem', color: '#1E293B', margin: '0 0 0.25rem 0' }}>Analytics & Progress</h1>
-            <p style={{ color: '#64748B', margin: 0 }}>Track student engagement and intervention effectiveness.</p>
+            <h1 style={{ fontSize: '1.5rem', color: 'var(--text)', margin: '0 0 0.125rem', fontWeight: '800', letterSpacing: '-0.03em', display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
+              <BarChartIcon size={20} style={{ color: 'var(--primary)' }} />Analytics &amp; Progress
+            </h1>
+            <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: '0.875rem' }}>
+              {role === 'admin' ? 'Platform-wide data across all educators and students.' : "Track your students' engagement and intervention effectiveness."}
+            </p>
           </div>
-          <button onClick={() => window.print()} className="btn btn-primary">📄 Export PDF</button>
+          <button onClick={() => window.print()} className="btn" style={{ background: 'var(--surface)', border: '1.5px solid var(--border)', color: 'var(--text)', gap: '0.4rem' }}>
+            <PrinterIcon size={13} />Print
+          </button>
         </header>
 
-        {/* Summary stats */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
-          {[
-            { label: 'Avg Score', value: '78%', icon: '⭐', color: '#F59E0B', bg: '#FFFBEB' },
-            { label: 'Activities Done', value: '24', icon: '🎮', color: '#6366F1', bg: '#EEF2FF' },
-            { label: 'Students Active', value: '5', icon: '🎓', color: '#10B981', bg: '#ECFDF5' },
-            { label: 'Improvement', value: '+29%', icon: '📈', color: '#0EA5E9', bg: '#EFF6FF' },
+        {error && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#FEE2E2', border: '1.5px solid #FECACA', color: '#B91C1C', borderRadius: '8px', padding: '0.75rem 1rem', marginBottom: '1.25rem', fontWeight: '600', fontSize: '0.875rem' }}>
+            <AlertTriangleIcon size={14} />{error}
+          </div>
+        )}
+
+        {/* Summary stat cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem', marginBottom: '1.75rem' }}>
+          {loading ? [1,2,3,4].map(i => <Skeleton key={i} h={100} />) : [
+            { label: 'Avg Score',        value: summary.avg_score ? `${summary.avg_score}%` : '—', icon: BarChartIcon,      color: '#F59E0B' },
+            { label: 'Activity Attempts',value: summary.total_attempts ?? 0,                       icon: ActivityIcon,     color: '#6366F1' },
+            { label: 'Students Active',  value: summary.students_active ?? 0,                      icon: GraduationCapIcon,color: '#10B981' },
+            { label: 'Screenings Run',   value: summary.total_screenings ?? 0,                     icon: ClipboardListIcon,color: '#8B5CF6' },
           ].map((s, i) => (
-            <div key={i} style={{ background: s.bg, borderRadius: '16px', padding: '1.5rem', border: `2px solid ${s.color}22` }}>
-              <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>{s.icon}</div>
-              <div style={{ fontSize: '2.25rem', fontWeight: '800', color: s.color, lineHeight: '1' }}>{s.value}</div>
-              <div style={{ fontSize: '0.85rem', fontWeight: '600', color: '#64748B', marginTop: '0.25rem' }}>{s.label}</div>
+            <div key={i} style={{ background: 'white', borderRadius: '10px', padding: '1.1rem', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <div style={{ background: `${s.color}18`, borderRadius: '7px', padding: '0.375rem', display: 'flex', width: 'fit-content' }}>
+                <s.icon size={14} style={{ color: s.color }} />
+              </div>
+              <div style={{ fontSize: '1.625rem', fontWeight: '800', color: s.color, lineHeight: 1, letterSpacing: '-0.04em' }}>{s.value}</div>
+              <div style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{s.label}</div>
             </div>
           ))}
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '2rem', marginBottom: '2rem' }}>
-          {/* Line Chart */}
-          <div style={{ background: 'white', borderRadius: '20px', padding: '2rem', border: '2px solid #E2E8F0' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <h2 style={{ fontSize: '1.3rem', margin: 0, color: '#1E293B' }}>Activity Score Trend</h2>
-              <span style={{ background: '#ECFDF5', color: '#059669', padding: '0.3rem 0.75rem', borderRadius: '99px', fontWeight: '700', fontSize: '0.82rem' }}>📈 This Week</span>
+        <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
+
+          {/* Recent Activity Log */}
+          <div style={{ background: 'white', borderRadius: '20px', border: '2px solid #E2E8F0', overflow: 'hidden' }}>
+            <div style={{ padding: '1.25rem 1.75rem', borderBottom: '2px solid #F1F5F9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2 style={{ margin: 0, fontSize: '0.9375rem', color: 'var(--text)', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><ActivityIcon size={15} style={{ color: 'var(--primary)' }} />Recent Activity</h2>
+              <span style={{ background: '#EEF2FF', color: '#6366F1', padding: '0.2rem 0.7rem', borderRadius: '99px', fontWeight: '800', fontSize: '0.78rem' }}>{recent.length} entries</span>
             </div>
-            <SVGLineChart data={weekData} color="#6366F1" />
-          </div>
 
-          {/* LD Breakdown */}
-          <div style={{ background: 'white', borderRadius: '20px', padding: '2rem', border: '2px solid #E2E8F0' }}>
-            <h2 style={{ fontSize: '1.3rem', margin: '0 0 1.5rem 0', color: '#1E293B' }}>LD Intervention Reach</h2>
-            {[
-              { ld: 'Dyslexia', pct: 68, color: '#E11D48' },
-              { ld: 'Dysgraphia', pct: 45, color: '#7C3AED' },
-              { ld: 'Dyscalculia', pct: 30, color: '#D97706' },
-              { ld: 'APD', pct: 22, color: '#1D4ED8' },
-              { ld: 'NVLD', pct: 15, color: '#059669' },
-            ].map((item) => (
-              <div key={item.ld} style={{ marginBottom: '1rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
-                  <span style={{ fontWeight: '700', fontSize: '0.9rem', color: '#475569' }}>{item.ld}</span>
-                  <span style={{ fontWeight: '800', color: item.color, fontSize: '0.9rem' }}>{item.pct}%</span>
-                </div>
-                <div style={{ height: '8px', background: '#F1F5F9', borderRadius: '4px', overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${item.pct}%`, background: item.color, borderRadius: '4px', animation: 'growBar 1s ease forwards' }} />
-                </div>
+            {loading ? (
+              <div style={{ padding: '1.25rem' }}><Skeleton /><Skeleton /><Skeleton /></div>
+            ) : recent.length === 0 ? (
+              <div style={{ padding: '2.5rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                <ActivityIcon size={28} style={{ color: 'var(--text-placeholder)', margin: '0 auto 0.75rem', display: 'block' }} />
+                <p style={{ fontWeight: '600', margin: '0 0 0.25rem', fontSize: '0.9rem' }}>No activity attempts yet.</p>
+                <p style={{ fontSize: '0.8125rem', margin: 0 }}>Students need to log in and complete activities.</p>
               </div>
-            ))}
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ background: '#F8FAFC' }}>
+                      {['Student', 'Activity', 'Score', 'Attempt', 'When'].map(h => (
+                        <th key={h} style={{ padding: '0.75rem 1.25rem', textAlign: 'left', color: '#94A3B8', fontWeight: '700', fontSize: '0.75rem', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {recent.map((a, i) => (
+                      <tr key={i} style={{ borderTop: '1px solid #F1F5F9', transition: 'background 0.15s' }}
+                        onMouseEnter={e => e.currentTarget.style.background = '#FAFBFF'}
+                        onMouseLeave={e => e.currentTarget.style.background = ''}>
+                        <td style={{ padding: '0.9rem 1.25rem', fontWeight: '700', color: '#1E293B', fontSize: '0.9rem', whiteSpace: 'nowrap' }}>{a.student_name}</td>
+                        <td style={{ padding: '0.9rem 1.25rem', color: '#64748B', fontSize: '0.85rem' }}>{ACTIVITY_TITLES[a.activity_key] || a.activity_key}</td>
+                        <td style={{ padding: '0.9rem 1.25rem' }}><ScoreChip score={a.score} /></td>
+                        <td style={{ padding: '0.9rem 1.25rem', color: '#94A3B8', fontSize: '0.82rem', fontWeight: '700' }}>#{a.attempt}</td>
+                        <td style={{ padding: '0.9rem 1.25rem', color: '#94A3B8', fontSize: '0.82rem', whiteSpace: 'nowrap' }}>{relTime(a.completed_at)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* LD Distribution */}
+          <div style={{ background: 'white', borderRadius: '20px', padding: '1.75rem', border: '2px solid #E2E8F0' }}>
+            <h2 style={{ fontSize: '0.9375rem', margin: '0 0 0.25rem', color: 'var(--text)', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><ClipboardListIcon size={15} style={{ color: 'var(--primary)' }} />LD Detection Distribution</h2>
+            <p style={{ color: '#64748B', fontSize: '0.82rem', margin: '0 0 1.5rem' }}>
+              % of screenings that flagged each LD (≥60% score).
+            </p>
+
+            {loading ? (
+              <><Skeleton h={28} /><Skeleton h={28} /><Skeleton h={28} /><Skeleton h={28} /><Skeleton h={28} /></>
+            ) : ldDist.length === 0 || ldDist.every(l => l.pct === 0) ? (
+              <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '1.5rem' }}>
+                <ClipboardListIcon size={24} style={{ color: 'var(--text-placeholder)', margin: '0 auto 0.5rem', display: 'block' }} />
+                <p style={{ fontWeight: '600', margin: 0, fontSize: '0.875rem' }}>No screening results yet.</p>
+                <p style={{ fontSize: '0.8rem', margin: '0.25rem 0 0' }}>Run screenings to see LD distribution.</p>
+              </div>
+            ) : (
+              ldDist.map(item => (
+                <LDBar key={item.ld} ld={item.ld} pct={item.pct} flagged={item.flagged} />
+              ))
+            )}
+
+            {!loading && ldDist.length > 0 && (
+              <div style={{ marginTop: '1.25rem', padding: '0.75rem 1rem', background: '#F8FAFC', borderRadius: '12px' }}>
+                <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748B', fontWeight: '700' }}>
+                  Based on <strong style={{ color: '#1E293B' }}>{data?.summary?.total_screenings || 0}</strong> total screening{data?.summary?.total_screenings !== 1 ? 's' : ''}
+                </p>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Activity Feed */}
-        <div style={{ background: 'white', borderRadius: '20px', border: '2px solid #E2E8F0', overflow: 'hidden' }}>
-          <div style={{ padding: '1.5rem 2rem', borderBottom: '2px solid #F1F5F9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h2 style={{ margin: 0, fontSize: '1.3rem', color: '#1E293B' }}>Recent Activity Log</h2>
-            <span style={{ color: '#94A3B8', fontSize: '0.85rem', fontWeight: '600' }}>{activities.length} entries</span>
+        {/* Empty state when no data at all */}
+        {!loading && !error && summary.total_attempts === 0 && summary.total_screenings === 0 && (
+          <div style={{ background: 'white', borderRadius: '10px', border: '1px solid var(--border)', padding: '3rem', textAlign: 'center' }}>
+            <BarChartIcon size={28} style={{ color: 'var(--text-placeholder)', margin: '0 auto 0.75rem', display: 'block' }} />
+            <h2 style={{ color: 'var(--text)', margin: '0 0 0.375rem', fontSize: '1rem' }}>No data yet</h2>
+            <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: '0.875rem' }}>Run screenings and assign activities to students — data will appear here automatically.</p>
           </div>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ background: '#F8FAFC' }}>
-                {['Student', 'Activity', 'Score', 'Status', 'When'].map(h => (
-                  <th key={h} style={{ padding: '0.875rem 1.5rem', textAlign: 'left', color: '#94A3B8', fontWeight: '700', fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {activities.map((a, i) => (
-                <tr key={i} style={{ borderTop: '1px solid #F1F5F9', transition: 'background 0.15s' }}
-                  onMouseEnter={e => e.currentTarget.style.background = '#FAFBFF'}
-                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                  <td style={{ padding: '1.1rem 1.5rem', fontWeight: '700', color: '#1E293B', fontSize: '0.95rem' }}>{a.name}</td>
-                  <td style={{ padding: '1.1rem 1.5rem', color: '#64748B', fontSize: '0.9rem' }}>{a.activity}</td>
-                  <td style={{ padding: '1.1rem 1.5rem', fontWeight: '800', color: a.score !== null ? a.color : '#94A3B8', fontSize: '1rem' }}>
-                    {a.score !== null ? `${a.score}%` : '—'}
-                  </td>
-                  <td style={{ padding: '1.1rem 1.5rem' }}>
-                    <span style={{ background: a.bg, color: a.color, padding: '0.3rem 0.75rem', borderRadius: '99px', fontWeight: '700', fontSize: '0.8rem' }}>
-                      {a.status === 'completed' ? '✅ Completed' : '⏳ In Progress'}
-                    </span>
-                  </td>
-                  <td style={{ padding: '1.1rem 1.5rem', color: '#94A3B8', fontSize: '0.85rem' }}>{a.time}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <style>{`@keyframes growBar { from { width: 0; } }`}</style>
+        )}
+
+        <style>{`
+          @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+        `}</style>
       </div>
     </div>
   );

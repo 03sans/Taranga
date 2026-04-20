@@ -16,7 +16,7 @@ def log_progress(
 ):
     progress = StudentProgress(
         student_id=payload.student_id,
-        activity_id=payload.activity_id,
+        activity_key=payload.activity_key,
         score=payload.score,
         time_taken_seconds=payload.time_taken_seconds
     )

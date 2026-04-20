@@ -1,0 +1,43 @@
+sequenceDiagram
+    actor Teacher
+    participant API as FastAPI Backend
+    participant HRAT as HRAT Engine
+    participant NLP as NLP Analyzer (spaCy)
+    participant ML as ML Model (RandomForest)
+    participant SHAP as SHAP Explainer
+    participant DB as Database
+
+    note over Teacher,DB: Triggered at POST /screenings/session/complete
+
+    Teacher->>API: {session_id, student_id, nlp_notes}
+
+    API->>HRAT: finalize(session_id)
+    HRAT-->>API: feature_vector [q1..q20 averaged scores]
+
+    alt nlp_notes provided
+        API->>NLP: analyze_observation_notes(nlp_notes)
+        NLP->>NLP: tokenize + lemmatize (spaCy en_core_web_sm)
+        NLP->>NLP: match lemmas against LD keyword sets
+        NLP-->>API: {detected_indicators, keyword_matches, flag_counts}
+    end
+
+    API->>ML: predict_with_explanation(feature_vector)
+    ML->>ML: load ml_model.joblib (MultiOutputClassifier)
+    ML->>ML: predict probabilities for 5 LD labels
+
+    ML->>SHAP: TreeExplainer.shap_values(feature_vector)
+    SHAP->>SHAP: compute per-feature SHAP contributions
+    SHAP->>SHAP: rank top 3 features per LD
+    SHAP-->>ML: shap_values + top_features per LD
+
+    ML->>ML: generate_narrative(student_name, ld, probability, top_features)
+    ML-->>API: {ld_scores, shap_top_features, narrative_text}
+
+    API->>DB: INSERT Screening(student_id, assessor_id, answers, nlp_notes)
+    DB-->>API: screening_id
+
+    API->>DB: INSERT PredictionResult(screening_id, dyslexia_score, dyscalculia_score, dysgraphia_score, nvld_score, apd_score)
+
+    API->>HRAT: delete_session(session_id)
+
+    API-->>Teacher: {screening_id, predictions: {ld: score}, nlp_flags, explanations, narrative}

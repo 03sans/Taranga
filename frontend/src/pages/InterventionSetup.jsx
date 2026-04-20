@@ -1,8 +1,38 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 
+/* ── Full activity catalog (mirrors backend activity_catalog.py) ────────── */
+const CATALOG = [
+  // DYSLEXIA
+  { key:'dys_letter_flip',  ld_type:'dyslexia',    title:'Letter Flip',       icon:'Aa', xp:60, difficulty:'easy',   engine:'FallingCatcher', description:'Catch only correctly-written letters before they hit the bottom!' },
+  { key:'dys_rhyme_rocket', ld_type:'dyslexia',    title:'Rhyme Rocket',      icon:'→', xp:50, difficulty:'easy',   engine:'MatchPairs',     description:'Match each word to the word it rhymes with!' },
+  { key:'dys_word_builder', ld_type:'dyslexia',    title:'Word Builder',      icon:'⬜', xp:70, difficulty:'medium', engine:'MultipleChoice', description:'Pick the correct spelling from the options.' },
+  { key:'dys_spot_error',   ld_type:'dyslexia',    title:'Spot the Error',    icon:'?', xp:80, difficulty:'hard',   engine:'MultipleChoice', description:'Find the misspelled word hidden in each sentence.' },
+  // DYSCALCULIA
+  { key:'dc_number_jump',   ld_type:'dyscalculia', title:'Number Jump',       icon:'#', xp:60, difficulty:'easy',   engine:'FallingCatcher', description:'Catch only numbers that fit the counting pattern!' },
+  { key:'dc_math_match',    ld_type:'dyscalculia', title:'Math Match',        icon:'+', xp:55, difficulty:'easy',   engine:'MatchPairs',     description:'Match each maths expression to its correct answer.' },
+  { key:'dc_clock_hero',    ld_type:'dyscalculia', title:'Clock Hero',        icon:'⏰', xp:65, difficulty:'medium', engine:'MultipleChoice', description:'Read the clock description and choose the correct time.' },
+  { key:'dc_pattern_find',  ld_type:'dyscalculia', title:'Pattern Detective', icon:'◈', xp:75, difficulty:'hard',   engine:'MultipleChoice', description:'Find the missing number in the pattern.' },
+  // DYSGRAPHIA
+  { key:'dg_space_squad',   ld_type:'dysgraphia',  title:'Space Squad',       icon:'→', xp:50, difficulty:'easy',   engine:'MultipleChoice', description:'Find the sentence where words have correct spacing.' },
+  { key:'dg_letter_sort',   ld_type:'dysgraphia',  title:'Letter Sort',       icon:'Ab', xp:65, difficulty:'medium', engine:'FallingCatcher', description:'Catch only correctly-formed letters!' },
+  { key:'dg_copy_dash',     ld_type:'dysgraphia',  title:'Copy Challenge',    icon:'=', xp:70, difficulty:'medium', engine:'MultipleChoice', description:'A sentence flashes — answer questions about what you saw!' },
+  { key:'dg_trace_race',    ld_type:'dysgraphia',  title:'Trace Race',        icon:'w', xp:55, difficulty:'easy',   engine:'MatchPairs',     description:'Match each word to the correctly written version.' },
+  // NVLD
+  { key:'nv_emotion_read',  ld_type:'nvld',        title:'Emotion Match',     icon:'☺', xp:60, difficulty:'easy',   engine:'MatchPairs',     description:'Match facial descriptions to the correct emotion word.' },
+  { key:'nv_map_nav',       ld_type:'nvld',        title:'Map Navigator',     icon:'◎', xp:70, difficulty:'medium', engine:'MultipleChoice', description:'Follow directions on a map to build spatial skills!' },
+  { key:'nv_shape_fit',     ld_type:'nvld',        title:'Shape Puzzle',      icon:'◇', xp:65, difficulty:'medium', engine:'MatchPairs',     description:'Match each shape to its mirror image or rotated version.' },
+  { key:'nv_social_cue',    ld_type:'nvld',        title:'Social Decoder',    icon:'~', xp:80, difficulty:'hard',   engine:'MultipleChoice', description:'Read social situations and choose the best response.' },
+  // APD
+  { key:'apd_word_echo',    ld_type:'apd',         title:'Word Echo',         icon:'„', xp:65, difficulty:'medium', engine:'MultipleChoice', description:'A word appears briefly — can you remember it?' },
+  { key:'apd_step_follow',  ld_type:'apd',         title:'Step Follower',     icon:'=', xp:75, difficulty:'hard',   engine:'MultipleChoice', description:'Read multi-step instructions carefully, then answer!' },
+  { key:'apd_rhyme_id',     ld_type:'apd',         title:'Rhyme Radar',       icon:'♩', xp:55, difficulty:'easy',   engine:'FallingCatcher', description:'Catch only the words that rhyme with the target word.' },
+  { key:'apd_sound_sort',   ld_type:'apd',         title:'Sound Sort',        icon:'♪', xp:60, difficulty:'easy',   engine:'MatchPairs',     description:'Match each sound word to the object that makes it.' },
+];
+
+
 const authFetch = (url, opts = {}) => {
-  const token = localStorage.getItem('access_token');
+  const token = sessionStorage.getItem('access_token');
   return fetch(url, {
     ...opts,
     headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}), ...opts.headers },
@@ -10,11 +40,11 @@ const authFetch = (url, opts = {}) => {
 };
 
 const LD_META = {
-  dyslexia:    { label: 'Dyslexia',    color: '#6366F1', bg: '#EEF2FF', emoji: '📖' },
-  dyscalculia: { label: 'Dyscalculia', color: '#F59E0B', bg: '#FFFBEB', emoji: '🔢' },
-  dysgraphia:  { label: 'Dysgraphia',  color: '#10B981', bg: '#ECFDF5', emoji: '✏️' },
-  nvld:        { label: 'NVLD',        color: '#8B5CF6', bg: '#F5F3FF', emoji: '🧩' },
-  apd:         { label: 'APD',         color: '#EF4444', bg: '#FEF2F2', emoji: '👂' },
+  dyslexia:    { label: 'Dyslexia',    color: '#6366F1', bg: '#EEF2FF', emoji: '' },
+  dyscalculia: { label: 'Dyscalculia', color: '#F59E0B', bg: '#FFFBEB',  },
+  dysgraphia:  { label: 'Dysgraphia',  color: '#10B981', bg: '#ECFDF5',  },
+  nvld:        { label: 'NVLD',        color: '#8B5CF6', bg: '#F5F3FF',  },
+  apd:         { label: 'APD',         color: '#EF4444', bg: '#FEF2F2',  },
 };
 
 const GRADES = ['Grade 1','Grade 2','Grade 3','Grade 4','Grade 5','Grade 6','Grade 7','Grade 8'];
@@ -63,45 +93,50 @@ const InterventionSetup = () => {
 
   const [step, setStep]             = useState(1);
   const [student, setStudent]       = useState(null);
-  const [accountInfo, setAccount]   = useState(null);
+  const [accountInfo, setAccountInfo] = useState(null);
   const [loading, setLoading]       = useState(true);
-  const [catalog, setCatalog]       = useState([]);
   const [selectedKeys, setSelected] = useState(new Set());
   const [error, setError]           = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [result, setResult]         = useState(null);  // after account creation
+  const [result, setResult]         = useState(null);
 
   // credentials form
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [credErrors, setCredErrors] = useState({});
 
-  /* fetch student + account + catalog */
+  /* fetch student + account only — catalog comes from hardcoded CATALOG const */
   useEffect(() => {
-    const token = localStorage.getItem('access_token');
+    const token = sessionStorage.getItem('access_token');
     if (!token) { navigate('/login'); return; }
-    Promise.all([
-      authFetch(`/api/students/${studentId}`).then(r => r.json()),
-      authFetch(`/api/students/${studentId}/account`).then(r => r.json()),
-      authFetch('/api/activities/catalog').then(r => r.json()),
-    ]).then(([studentData, accountData, catalogData]) => {
-      setStudent(studentData);
-      setAccountInfo(accountData);
-      setCatalog(Array.isArray(catalogData) ? catalogData : []);
-      // Auto-suggest username from student name
-      if (!accountData.has_account && studentData.full_name) {
-        const suggested = studentData.full_name.toLowerCase().replace(/[^a-z0-9]/g, '_').substring(0, 15);
-        setUsername(suggested);
-      } else if (accountData.has_account) {
-        setUsername(accountData.username || '');
-      }
-      // Pre-select activities for high-risk LDs (≥40%)
-      const flagged = Object.entries(ldScores).filter(([, v]) => v >= 40).map(([k]) => k);
-      if (flagged.length > 0 && Array.isArray(catalogData)) {
-        const preSelected = new Set(catalogData.filter(a => flagged.includes(a.ld_type)).map(a => a.key));
-        setSelected(preSelected);
-      }
-    }).catch(() => setError('Failed to load student data.'))
+
+    const fetchStudent = authFetch(`/api/students/${studentId}`).then(r => r.json()).catch(() => null);
+    const fetchAccount = authFetch(`/api/students/${studentId}/account`).then(r => r.json()).catch(() => ({ has_account: false }));
+
+    Promise.all([fetchStudent, fetchAccount])
+      .then(([studentData, accountData]) => {
+        if (!studentData || studentData.detail) {
+          setError('Could not load student. Are you logged in as a teacher?');
+          return;
+        }
+        setStudent(studentData);
+        setAccountInfo(accountData || { has_account: false });
+
+        // Auto-suggest username
+        if (!accountData?.has_account && studentData.full_name) {
+          const suggested = studentData.full_name.toLowerCase().replace(/[^a-z0-9]/g, '_').substring(0, 15);
+          setUsername(suggested);
+        } else if (accountData?.has_account) {
+          setUsername(accountData.username || '');
+        }
+
+        // Pre-select activities for flagged LDs (score ≥40%)
+        const flagged = Object.entries(ldScores).filter(([, v]) => v >= 40).map(([k]) => k);
+        if (flagged.length > 0) {
+          const preSelected = new Set(CATALOG.filter(a => flagged.includes(a.ld_type)).map(a => a.key));
+          setSelected(preSelected);
+        }
+      })
       .finally(() => setLoading(false));
   }, [studentId, navigate]); // eslint-disable-line
 
@@ -167,13 +202,13 @@ const InterventionSetup = () => {
   if (loading) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#F8FAFC' }}>
       <div style={{ textAlign: 'center' }}>
-        <div style={{ fontSize: '3rem', animation: 'spin 2s linear infinite', display: 'inline-block' }}>⚙️</div>
+        <div style={{ fontSize: '3rem', animation: 'spin 2s linear infinite', display: 'inline-block' }}>️</div>
         <p style={{ color: '#64748B', marginTop: '1rem', fontWeight: '700' }}>Loading student data…</p>
       </div>
     </div>
   );
 
-  const catalogByLD = catalog.reduce((acc, a) => { (acc[a.ld_type] ??= []).push(a); return acc; }, {});
+  const catalogByLD = CATALOG.reduce((acc, a) => { (acc[a.ld_type] ??= []).push(a); return acc; }, {});
 
   return (
     <div style={{ minHeight: '100vh', background: '#F8FAFC', padding: '2rem' }}>
@@ -202,14 +237,14 @@ const InterventionSetup = () => {
 
         {error && (
           <div style={{ background: '#FFF1F2', border: '2px solid #FECDD3', color: '#E11D48', borderRadius: '14px', padding: '1rem 1.25rem', marginBottom: '1.5rem', fontWeight: '700' }}>
-            ⚠ {error}
+            {error}
           </div>
         )}
 
         {/* ── STEP 1: Credentials ──────────────────────────────────────────── */}
         {step === 1 && (
           <div style={{ background: 'white', borderRadius: '24px', padding: '2rem', border: '2px solid #E2E8F0' }}>
-            <h2 style={{ fontSize: '1.3rem', color: '#1E293B', margin: '0 0 0.5rem' }}>🔑 Student Login Credentials</h2>
+            <h2 style={{ fontSize: '1.3rem', color: '#1E293B', margin: '0 0 0.5rem' }}> Student Login Credentials</h2>
             <p style={{ color: '#64748B', margin: '0 0 1.75rem', fontSize: '0.9rem' }}>
               {accountInfo?.has_account
                 ? `This student already has an account (@${accountInfo.username}). You can update their credentials below.`
@@ -249,7 +284,7 @@ const InterventionSetup = () => {
             <div style={{ display: 'flex', gap: '0.75rem' }}>
               <button onClick={() => navigate(-1)} className="btn" style={{ background: '#F1F5F9', color: '#64748B', border: 'none' }}>Cancel</button>
               <button onClick={handleCreateAccount} disabled={submitting} className="btn btn-primary" style={{ flex: 1 }}>
-                {submitting ? '⏳ Creating…' : accountInfo?.has_account ? '🔄 Update Credentials & Continue' : '✅ Create Account & Continue'}
+                {submitting ? 'Creating…' : accountInfo?.has_account ? 'Update credentials & continue' : ' Create Account & Continue'}
               </button>
             </div>
           </div>
@@ -259,7 +294,7 @@ const InterventionSetup = () => {
         {step === 2 && (
           <div>
             <div style={{ background: '#ECFDF5', border: '2px solid #A7F3D0', borderRadius: '16px', padding: '1rem 1.5rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <span style={{ fontSize: '1.3rem' }}>✅</span>
+              <span style={{ fontSize: '1.3rem' }}></span>
               <div>
                 <p style={{ color: '#065F46', fontWeight: '800', margin: 0 }}>
                   Account ready! Username: <code style={{ background: '#D1FAE5', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>{result?.username}</code>
@@ -274,7 +309,7 @@ const InterventionSetup = () => {
             </p>
 
             {Object.entries(catalogByLD).map(([ld, acts]) => {
-              const meta = LD_META[ld] || { label: ld, color: '#6366F1', bg: '#EEF2FF', emoji: '📚' };
+              const meta = LD_META[ld] || { label: ld, color: '#6366F1', bg: '#EEF2FF',  };
               return (
                 <div key={ld} style={{ marginBottom: '1.5rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
@@ -317,7 +352,7 @@ const InterventionSetup = () => {
             <div style={{ position: 'sticky', bottom: '1rem', background: 'white', border: '2px solid #E2E8F0', borderRadius: '16px', padding: '1rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 8px 24px rgba(0,0,0,0.1)' }}>
               <span style={{ color: '#64748B', fontWeight: '700' }}>{selectedKeys.size} activities selected</span>
               <button onClick={handleAssign} disabled={submitting || selectedKeys.size === 0} className="btn btn-primary">
-                {submitting ? '⏳ Assigning…' : `✅ Assign ${selectedKeys.size} Activities`}
+                {submitting ? '⏳ Assigning…' : ` Assign ${selectedKeys.size} Activities`}
               </button>
             </div>
           </div>
@@ -326,13 +361,13 @@ const InterventionSetup = () => {
         {/* ── STEP 3: Done! ────────────────────────────────────────────────── */}
         {step === 3 && (
           <div style={{ textAlign: 'center', background: 'white', borderRadius: '24px', padding: '3rem 2rem', border: '2px solid #E2E8F0' }}>
-            <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>🎉</div>
+            <div style={{ fontSize: '4rem', marginBottom: '1rem' }}></div>
             <h2 style={{ color: '#1E293B', marginBottom: '0.5rem' }}>All Set!</h2>
             <p style={{ color: '#64748B', marginBottom: '2rem' }}>{student?.full_name} is ready to start their learning journey.</p>
 
             {/* Credential card */}
             <div style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)', borderRadius: '20px', padding: '2rem', marginBottom: '2rem', textAlign: 'left', position: 'relative', overflow: 'hidden' }}>
-              <div style={{ position: 'absolute', right: '-5%', top: '-20%', fontSize: '8rem', opacity: 0.1 }}>🎓</div>
+              <div style={{ position: 'absolute', right: '-5%', top: '-20%', fontSize: '8rem', opacity: 0.1 }}></div>
               <p style={{ color: 'rgba(255,255,255,0.7)', fontWeight: '700', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 0.75rem' }}>Student Login Credentials</p>
               <p style={{ color: 'white', margin: '0 0 0.5rem', fontSize: '1.1rem' }}>
                 <span style={{ opacity: 0.7 }}>Username:</span>{' '}
@@ -345,7 +380,7 @@ const InterventionSetup = () => {
               <button
                 onClick={() => navigator.clipboard.writeText(`Username: ${result?.username}\nPassword: ${result?.password}`)}
                 style={{ background: 'rgba(255,255,255,0.2)', border: '2px solid rgba(255,255,255,0.4)', color: 'white', borderRadius: '10px', padding: '0.6rem 1.2rem', cursor: 'pointer', fontWeight: '700', fontSize: '0.88rem' }}>
-                📋 Copy Credentials
+                Copy credentials
               </button>
             </div>
 
@@ -358,7 +393,7 @@ const InterventionSetup = () => {
                 Back to Students
               </button>
               <button onClick={() => navigate(`/students/${studentId}/progress`)} className="btn btn-primary">
-                📊 View Progress Report
+                View progress report
               </button>
             </div>
           </div>

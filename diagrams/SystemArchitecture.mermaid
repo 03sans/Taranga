@@ -1,0 +1,53 @@
+flowchart TD
+    subgraph CLIENT["Client Layer"]
+        FE["ReactJS Frontend (Vite)\n─────────────────\nAuth Pages\nDashboards (Admin/Teacher/Parent/Student)\nScreening Wizard\nActivity Portal\nProgress & Reports"]
+    end
+
+    subgraph AUTH["Authentication Layer"]
+        JWT["JWT Bearer Token\n(HTTPBearer)"]
+        LOGIN["/auth/login\n(Teacher / Parent / Admin)"]
+        SLOGIN["/auth/student-login\n(Username-based)"]
+        REGISTER["/auth/register"]
+    end
+
+    subgraph API["FastAPI Backend"]
+        direction TB
+        R_USERS["/users\n(CRUD, Analytics, Platform Stats)"]
+        R_STUDENTS["/students\n(Add, List, Update)"]
+        R_SCREEN["/screenings\n(Session Start/Answer/Complete, NLP)"]
+        R_ACT["/activities\n(Catalog, Assign, Attempt)"]
+        R_PROG["/progress\n(Log, Retrieve)"]
+        R_DASH["/dashboard\n(Stats, Student Cards)"]
+        R_REPORT["/reports\n(Full Student Report JSON)"]
+    end
+
+    subgraph AI["AI / ML Layer"]
+        HRAT["HRAT Engine\n(Heuristic-Routed Adaptive Testing)\n─────────────────\nIn-memory session store\n3-phase routing (20 questions)\nDomain suspicion scoring"]
+        NLP["NLP Analyzer\n(spaCy en_core_web_sm)\n─────────────────\nLemmatization\nLD keyword matching\nFlag count per domain"]
+        ML["ML Model\n(MultiOutputClassifier)\n─────────────────\nRandomForest / GradientBoosting\nTrained on 3,000 synthetic samples\n5-label simultaneous prediction"]
+        SHAP["SHAP Explainer\n(TreeExplainer)\n─────────────────\nPer-feature contributions\nTop-3 features per LD\nHuman-readable narrative"]
+        CAT["Activity Catalog\n(In-memory)\n─────────────────\nActivities indexed by LD type\nInteractive data per activity"]
+    end
+
+    subgraph DB["Database Layer (SQLAlchemy)"]
+        T1[(users)]
+        T2[(students)]
+        T3[(screenings)]
+        T4[(prediction_results)]
+        T5[(intervention_activities)]
+        T6[(student_progress)]
+        T7[(student_activity_assignments)]
+    end
+
+    CLIENT -- "HTTPS + Bearer Token" --> AUTH
+    AUTH --> JWT
+    JWT --> API
+
+    R_SCREEN --> HRAT
+    HRAT --> ML
+    ML --> SHAP
+    R_SCREEN --> NLP
+
+    R_ACT --> CAT
+
+    API --> DB

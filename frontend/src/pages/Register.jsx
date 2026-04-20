@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { EyeIcon, EyeOffIcon, AlertTriangleIcon, CheckIcon, CheckCircleIcon, ArrowRightIcon } from '../components/icons';
 
 /* ── helpers ──────────────────────────────────────────────────────── */
 const EMAIL_RE   = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -30,7 +31,7 @@ const PasswordStrength = ({ password }) => {
 };
 
 const FieldError = ({ msg }) =>
-  msg ? <p style={{ color: '#E11D48', fontSize: '0.82rem', fontWeight: '700', margin: '0.3rem 0 0' }}>⚠ {msg}</p> : null;
+  msg ? <p style={{ color: '#B91C1C', fontSize: '0.8rem', fontWeight: '600', margin: '0.25rem 0 0', display: 'flex', alignItems: 'center', gap: '0.3rem' }}><AlertTriangleIcon size={12} />{msg}</p> : null;
 
 /* ── validate all fields, return errors object ────────────────────── */
 const validate = (formData) => {
@@ -138,22 +139,20 @@ const Register = () => {
   return (
     <div className="split-layout">
       {/* Visual Side */}
-      <div className="split-left" style={{ background: 'linear-gradient(135deg, var(--info-color) 0%, var(--primary-color) 100%)' }}>
-        <div style={{ maxWidth: '500px', zIndex: 1 }}>
-          <h1 style={{ fontSize: '3.5rem', color: 'white', marginBottom: '1.5rem', lineHeight: '1.2' }}>
-            Join the movement.
+      <div className="split-left">
+        <div style={{ maxWidth: '400px', zIndex: 1, position: 'relative' }}>
+          <h1 style={{ fontSize: '2.5rem', color: 'white', marginBottom: '1rem', lineHeight: '1.1', letterSpacing: '-0.04em', fontWeight: '800' }}>
+            Join Taranga
           </h1>
-          <p style={{ fontSize: '1.25rem', color: 'rgba(255,255,255,0.9)', marginBottom: '2rem' }}>
-            Empower every student. Screen early, intervene effectively, and track progress all in one beautiful platform.
+          <p style={{ fontSize: '1rem', color: 'rgba(255,255,255,0.72)', marginBottom: '2rem', lineHeight: '1.65', fontWeight: '400' }}>
+            Empower every student. Screen early, intervene effectively, and track progress in one unified platform.
           </p>
-
-          {/* Requirements card */}
-          <div style={{ background: 'rgba(255,255,255,0.12)', borderRadius: '16px', padding: '1.25rem 1.5rem', border: '1px solid rgba(255,255,255,0.2)' }}>
-            <p style={{ color: 'white', fontWeight: '800', fontSize: '0.9rem', margin: '0 0 0.75rem 0' }}>🔐 Password Requirements</p>
+          <div style={{ background: 'rgba(255,255,255,0.08)', borderRadius: '10px', padding: '1rem 1.25rem', border: '1px solid rgba(255,255,255,0.12)' }}>
+            <p style={{ color: 'rgba(255,255,255,0.55)', fontWeight: '600', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 0.625rem' }}>Password requirements</p>
             {['At least 8 characters', 'One uppercase letter (A–Z)', 'One number (0–9)'].map(r => (
-              <p key={r} style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.85rem', margin: '0.2rem 0', display: 'flex', gap: '0.5rem' }}>
-                <span>✓</span>{r}
-              </p>
+              <div key={r} style={{ color: 'rgba(255,255,255,0.78)', fontSize: '0.8125rem', margin: '0.3rem 0', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <CheckIcon size={12} style={{ color: '#86EFAC', flexShrink: 0 }} />{r}
+              </div>
             ))}
           </div>
         </div>
@@ -162,15 +161,15 @@ const Register = () => {
       {/* Form Side */}
       <div className="split-right">
         <div style={{ width: '100%', maxWidth: '500px' }}>
-          <div style={{ marginBottom: '2rem' }}>
-            <h2 style={{ fontSize: '2.5rem', color: 'var(--primary-color)', marginBottom: '0.5rem' }}>Create Account</h2>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '1.1rem' }}>Set up your educator or parent profile.</p>
+          <div style={{ marginBottom: '1.75rem' }}>
+            <h2 style={{ fontSize: '1.75rem', color: 'var(--text)', marginBottom: '0.25rem', letterSpacing: '-0.03em', fontWeight: '800' }}>Create account</h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', fontWeight: '400' }}>Set up your educator or parent profile.</p>
           </div>
 
           {/* API / server error */}
           {apiError && (
-            <div style={{ color: '#E11D48', marginBottom: '1.5rem', background: '#FFF1F2', padding: '1rem 1.25rem', borderRadius: '12px', fontWeight: '700', border: '2px solid #FECDD3', display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
-              <span>❌</span>{apiError}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#B91C1C', marginBottom: '1.25rem', background: '#FEE2E2', padding: '0.75rem 1rem', borderRadius: '8px', fontSize: '0.8125rem', fontWeight: '600', border: '1px solid #FECACA' }}>
+              <AlertTriangleIcon size={14} />{apiError}
             </div>
           )}
 
@@ -219,8 +218,8 @@ const Register = () => {
                   autoComplete="new-password"
                 />
                 <button type="button" onClick={() => setShowPw(p => !p)}
-                  style={{ position: 'absolute', right: '0.9rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.1rem', color: '#94A3B8', padding: 0 }}>
-                  {showPw ? '🙈' : '👁️'}
+                  style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8', padding: 0, display: 'flex' }}>
+                  {showPw ? <EyeOffIcon size={14} /> : <EyeIcon size={14} />}
                 </button>
               </div>
               <PasswordStrength password={formData.password} />
@@ -241,13 +240,13 @@ const Register = () => {
                   autoComplete="new-password"
                 />
                 <button type="button" onClick={() => setShowCPw(p => !p)}
-                  style={{ position: 'absolute', right: '0.9rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.1rem', color: '#94A3B8', padding: 0 }}>
-                  {showCPw ? '🙈' : '👁️'}
+                  style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8', padding: 0, display: 'flex' }}>
+                  {showCPw ? <EyeOffIcon size={14} /> : <EyeIcon size={14} />}
                 </button>
               </div>
               {/* Live match indicator */}
               {formData.confirmPassword && !errors.confirmPassword && formData.confirmPassword === formData.password && (
-                <p style={{ color: '#10B981', fontSize: '0.82rem', fontWeight: '700', margin: '0.3rem 0 0' }}>✓ Passwords match</p>
+                <p style={{ color: '#059669', fontSize: '0.8rem', fontWeight: '600', margin: '0.25rem 0 0', display: 'flex', alignItems: 'center', gap: '0.3rem' }}><CheckIcon size={12} />Passwords match</p>
               )}
               <FieldError msg={errors.confirmPassword} />
             </div>
@@ -264,16 +263,16 @@ const Register = () => {
             <button
               type="submit"
               className="btn btn-primary"
-              style={{ width: '100%', marginTop: '1rem', padding: '1rem' }}
+              style={{ width: '100%', marginTop: '0.75rem', padding: '0.75rem', fontSize: '0.875rem', borderRadius: '8px' }}
               disabled={loading}
             >
-              {loading ? 'Creating Account…' : 'Register Profile'}
+              {loading ? 'Creating account…' : <><span>Create account</span><ArrowRightIcon size={14} /></>}
             </button>
           </form>
 
-          <div style={{ marginTop: '2.5rem', textAlign: 'center' }}>
-            <p style={{ color: 'var(--text-secondary)', fontWeight: '700' }}>
-              Already have an account? <Link to="/login">Sign in here</Link>
+          <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
+              Already have an account? <Link to="/login" style={{ fontWeight: '600' }}>Sign in</Link>
             </p>
           </div>
         </div>

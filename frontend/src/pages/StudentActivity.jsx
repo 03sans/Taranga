@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 
 const authFetch = (url, opts = {}) => {
-  const token = localStorage.getItem('access_token');
+  const token = sessionStorage.getItem('access_token');
   return fetch(url, { ...opts, headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}), ...opts.headers } });
 };
 
@@ -30,7 +30,7 @@ const MatchPairsEngine = ({ config, color, bg, onComplete }) => {
   const [matched,   setMatched]   = useState(new Set());
   const [flash,     setFlash]     = useState(null); // { id, success }
   const [timeLeft,  setTimeLeft]  = useState(time_limit);
-  const [startTime]               = useState(Date.now());
+  const [startTime]               = useState(() => Date.now());
 
   useEffect(() => {
     if (timeLeft <= 0) { onComplete(Math.round((matched.size / half) * 100), Math.round((Date.now() - startTime) / 1000)); return; }
@@ -210,7 +210,7 @@ const FallingCatcherEngine = ({ config, color, bg, onComplete }) => {
     }));
   };
 
-  const hearts = Array.from({ length: initLives || 3 }, (_, i) => i < lives ? '❤️' : '🖤');
+  const hearts = Array.from({ length: initLives || 3 }, (_, i) => i < lives ? '♥' : '○');
 
   return (
     <div>
@@ -219,7 +219,7 @@ const FallingCatcherEngine = ({ config, color, bg, onComplete }) => {
         <div style={{ fontWeight: '800', color, fontSize: '0.95rem' }}>{score} caught</div>
       </div>
       <div style={{ background: bg, borderRadius: '12px', padding: '0.6rem 1rem', marginBottom: '1rem', fontSize: '0.88rem', fontWeight: '700', color }}>
-        🎯 {target_label}
+        {target_label}
       </div>
 
       {/* Game arena */}
@@ -269,7 +269,7 @@ const MultipleChoiceEngine = ({ config, color, bg, onComplete }) => {
   const [correct, setCorrect]   = useState(0);
   const [feedback, setFeedback] = useState(null);
   const [timeLeft, setTimeLeft] = useState(time_limit);
-  const [startTime] = useState(Date.now());
+  const [startTime] = useState(() => Date.now());
   const [hidden, setHidden]     = useState(flash_duration_ms ? true : false);
 
   // Flash mechanic for APD activities
@@ -371,7 +371,7 @@ const MultipleChoiceEngine = ({ config, color, bg, onComplete }) => {
       {/* Feedback */}
       {feedback && (
         <div style={{ background: feedback.correct ? '#ECFDF5' : '#FFF1F2', border: `2px solid ${feedback.correct ? '#A7F3D0' : '#FECDD3'}`, borderRadius: '14px', padding: '1rem 1.25rem', display: 'flex', alignItems: 'flex-start', gap: '0.75rem', animation: 'slideIn 0.3s ease' }}>
-          <span style={{ fontSize: '1.3rem', flexShrink: 0 }}>{feedback.correct ? '✅' : '❌'}</span>
+          <span style={{ fontSize: '1.3rem', flexShrink: 0 }}>{feedback.correct ? '✓' : '✗'}</span>
           <div>
             <p style={{ margin: 0, fontWeight: '800', color: feedback.correct ? '#065F46' : '#991B1B', fontSize: '0.9rem' }}>
               {feedback.correct ? 'Correct!' : 'Not quite!'}
@@ -388,18 +388,18 @@ const MultipleChoiceEngine = ({ config, color, bg, onComplete }) => {
    SCORE SCREEN
 ════════════════════════════════════════════════════════════════ */
 const ScoreScreen = ({ score, time, xpEarned, activity, color, bg, onPlayAgain, onBack }) => {
-  const grade = score >= 80 ? { label: 'Excellent! 🌟', emoji: '🏆' } : score >= 60 ? { label: 'Great Job! 👍', emoji: '⭐' } : { label: 'Keep Trying! 💪', emoji: '🎯' };
+  const grade = score >= 80 ? { label: 'Excellent!', rank: 'A+' } : score >= 60 ? { label: 'Great Job! 👍', emoji: '⭐' } : { label: 'Keep Trying! 💪', emoji: '🎯' };
   return (
     <div style={{ textAlign: 'center', padding: '2rem 0' }}>
-      <div style={{ fontSize: '5rem', marginBottom: '0.5rem', animation: 'bounceIn 0.5s ease' }}>{grade.emoji}</div>
+      <div style={{ fontSize: '5rem', marginBottom: '0.5rem', animation: 'bounceIn 0.5s ease' }}>{grade.rank}</div>
       <h2 style={{ color, fontSize: '1.8rem', marginBottom: '0.25rem' }}>{grade.label}</h2>
       <p style={{ color: '#64748B', marginBottom: '2rem' }}>You completed: <strong>{activity.title}</strong></p>
 
       <div style={{ display: 'flex', justifyContent: 'center', gap: '1.5rem', marginBottom: '2.5rem', flexWrap: 'wrap' }}>
         {[
-          { label: 'Score', value: `${Math.round(score)}%`, icon: '🎯' },
+          { label: 'Score', value: `${Math.round(score)}%`, icon: '●' },
           { label: 'Time', value: `${time}s`, icon: '⏱' },
-          { label: 'XP Earned', value: `+${xpEarned}`, icon: '⚡' },
+          { label: 'XP Earned', value: `+${xpEarned}`, icon: 'XP' },
         ].map(stat => (
           <div key={stat.label} style={{ background: bg, border: `2px solid ${color}44`, borderRadius: '16px', padding: '1.25rem 2rem', minWidth: '120px' }}>
             <div style={{ fontSize: '1.5rem', marginBottom: '0.25rem' }}>{stat.icon}</div>
@@ -414,7 +414,7 @@ const ScoreScreen = ({ score, time, xpEarned, activity, color, bg, onPlayAgain, 
           ← Back to Dashboard
         </button>
         <button onClick={onPlayAgain} style={{ background: `linear-gradient(135deg,${color},${color}CC)`, color: 'white', border: 'none', borderRadius: '14px', padding: '0.9rem 1.75rem', fontWeight: '900', cursor: 'pointer', fontSize: '1rem', boxShadow: `0 6px 20px ${color}40` }}>
-          🔁 Play Again
+          Play again
         </button>
       </div>
     </div>
@@ -434,7 +434,7 @@ const StudentActivity = () => {
   const [error, setError]       = useState('');
 
   useEffect(() => {
-    const token = localStorage.getItem('access_token');
+    const token = sessionStorage.getItem('access_token');
     if (!token) { navigate('/student-login'); return; }
 
     authFetch('/api/activities/my')
@@ -472,14 +472,14 @@ const StudentActivity = () => {
 
   if (phase === 'loading') return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#F8FAFC', flexDirection: 'column', gap: '1rem' }}>
-      <div style={{ fontSize: '3rem', animation: 'spin 1s linear infinite' }}>🎮</div>
+      <div style={{ fontSize: '3rem', animation: 'spin 1s linear infinite' }}></div>
       <p style={{ color: '#64748B', fontWeight: '700' }}>Loading activity…</p>
     </div>
   );
 
   if (phase === 'error') return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#F8FAFC', flexDirection: 'column', gap: '1rem', padding: '2rem', textAlign: 'center' }}>
-      <div style={{ fontSize: '3rem' }}>🔒</div>
+      <div style={{ fontSize: '3rem' }}></div>
       <h2 style={{ color: '#1E293B' }}>{error}</h2>
       <button onClick={() => navigate('/student-dashboard')} style={{ background: '#6366F1', color: 'white', border: 'none', borderRadius: '14px', padding: '0.9rem 2rem', fontWeight: '800', cursor: 'pointer', fontSize: '1rem' }}>
         ← Back to Dashboard
@@ -489,7 +489,7 @@ const StudentActivity = () => {
 
   if (phase === 'submitting') return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#F8FAFC', flexDirection: 'column', gap: '1rem' }}>
-      <div style={{ fontSize: '3rem', animation: 'spin 1s linear infinite' }}>⚡</div>
+      <div style={{ fontSize: '3rem', animation: 'spin 1s linear infinite' }}></div>
       <p style={{ color: '#64748B', fontWeight: '700' }}>Saving your score…</p>
     </div>
   );

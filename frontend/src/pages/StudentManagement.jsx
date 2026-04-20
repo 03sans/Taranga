@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
+import { SearchIcon, PlusIcon, Trash2Icon, AlertTriangleIcon, CheckCircleIcon, GraduationCapIcon } from '../components/icons';
 
 /* ─── constants ────────────────────────────────────────────────────── */
 const LD_COLORS = {
@@ -15,7 +16,7 @@ const GRADES = ['Grade 1','Grade 2','Grade 3','Grade 4','Grade 5','Grade 6','Gra
 
 /* ─── auth helper ──────────────────────────────────────────────────── */
 const authFetch = (url, opts = {}) => {
-  const token = localStorage.getItem('access_token');
+  const token = sessionStorage.getItem('access_token');
   return fetch(url, {
     ...opts,
     headers: {
@@ -39,15 +40,15 @@ const SkeletonRow = () => (
 
 /* ─── inline field error ───────────────────────────────────────────── */
 const FieldError = ({ msg }) =>
-  msg ? <p style={{ color: '#E11D48', fontSize: '0.8rem', fontWeight: '700', margin: '0.3rem 0 0' }}>⚠ {msg}</p> : null;
+  msg ? <p style={{ color: '#B91C1C', fontSize: '0.8rem', fontWeight: '600', margin: '0.25rem 0 0', display: 'flex', alignItems: 'center', gap: '0.3rem' }}><AlertTriangleIcon size={12} />{msg}</p> : null;
 
 /* ─── toast ────────────────────────────────────────────────────────── */
 const Toast = ({ message, type }) => {
   if (!message) return null;
   const isErr = type === 'error';
   return (
-    <div style={{ position: 'fixed', top: '1.5rem', right: '1.5rem', zIndex: 1000, background: isErr ? '#FFF1F2' : '#1E293B', color: isErr ? '#E11D48' : 'white', border: isErr ? '2px solid #FECDD3' : 'none', padding: '1rem 1.5rem', borderRadius: '14px', fontWeight: '700', boxShadow: '0 10px 30px rgba(0,0,0,0.2)', animation: 'slideIn 0.3s ease', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-      <span>{isErr ? '❌' : '✅'}</span>{message}
+    <div style={{ position: 'fixed', top: '1.25rem', right: '1.25rem', zIndex: 1000, background: isErr ? '#FEE2E2' : '#1E293B', color: isErr ? '#B91C1C' : 'white', border: isErr ? '1.5px solid #FECACA' : 'none', padding: '0.75rem 1.25rem', borderRadius: '8px', fontWeight: '600', fontSize: '0.875rem', boxShadow: '0 8px 24px rgba(0,0,0,0.2)', animation: 'slideIn 0.3s ease', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+      {isErr ? <AlertTriangleIcon size={14} /> : <CheckCircleIcon size={14} style={{ color: '#4ADE80' }} />}{message}
     </div>
   );
 };
@@ -55,7 +56,7 @@ const Toast = ({ message, type }) => {
 /* ─── main component ───────────────────────────────────────────────── */
 const StudentManagement = () => {
   const navigate = useNavigate();
-  const role = localStorage.getItem('role') || 'teacher';
+  const role = sessionStorage.getItem('role') || 'teacher';
 
   const [students,    setStudents]    = useState([]);
   const [loading,     setLoading]     = useState(true);
@@ -92,7 +93,7 @@ const StudentManagement = () => {
   }, []);
 
   useEffect(() => {
-    const token = localStorage.getItem('access_token');
+    const token = sessionStorage.getItem('access_token');
     if (!token) { navigate('/login'); return; }
     fetchStudents();
   }, [fetchStudents, navigate]);
@@ -132,7 +133,7 @@ const StudentManagement = () => {
     setAdding(true);
 
     try {
-      const res = await authFetch('/api/students/', {
+      const res = await authFetch('/api/students', {
         method: 'POST',
         body: JSON.stringify({
           full_name:     addForm.full_name.trim(),
@@ -189,15 +190,17 @@ const StudentManagement = () => {
         <Toast message={toast.msg} type={toast.type} />
 
         {/* Header */}
-        <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
+        <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.75rem', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
-            <h1 style={{ fontSize: '2.25rem', color: '#1E293B', margin: '0 0 0.25rem 0' }}>Student Roster</h1>
-            <p style={{ color: '#64748B', margin: 0 }}>
+            <h1 style={{ fontSize: '1.5rem', color: 'var(--text)', margin: '0 0 0.125rem', fontWeight: '800', letterSpacing: '-0.03em', display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
+              <GraduationCapIcon size={20} style={{ color: 'var(--primary)' }} />Student roster
+            </h1>
+            <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: '0.875rem' }}>
               {loading ? 'Loading…' : `${students.length} student${students.length !== 1 ? 's' : ''} · ${filtered.length} shown`}
             </p>
           </div>
           <div style={{ display: 'flex', gap: '0.75rem' }}>
-            <button className="btn btn-primary" onClick={() => setShowAdd(true)}>+ Add Student</button>
+            <button className="btn btn-primary" onClick={() => setShowAdd(true)} style={{ gap: '0.375rem' }}><PlusIcon size={13} />Add student</button>
           </div>
         </header>
 
@@ -221,20 +224,18 @@ const StudentManagement = () => {
 
         {/* Search + Filter */}
         <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-          <input
-            type="text"
-            placeholder="🔍  Search by name or grade…"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            style={{ flex: '1', minWidth: '200px', padding: '0.85rem 1.25rem', borderRadius: '12px', border: '2px solid #E2E8F0', fontFamily: 'var(--font-body)', fontWeight: '600', fontSize: '1rem', outline: 'none' }}
-          />
+          <div style={{ position: 'relative', flex: '1', minWidth: '200px' }}>
+            <SearchIcon size={14} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-placeholder)', pointerEvents: 'none' }} />
+            <input type="text" placeholder="Search by name or grade…" value={search} onChange={e => setSearch(e.target.value)}
+              style={{ paddingLeft: '2.25rem', width: '100%' }} />
+          </div>
           {[
-            { id: 'all',     label: '📋 All' },
-            { id: 'flagged', label: `⚠️ Flagged${flaggedCount > 0 ? ` (${flaggedCount})` : ''}` },
-            { id: 'typical', label: '✅ Typical' },
+            { id: 'all',     label: 'All' },
+            { id: 'flagged', label: `Flagged${flaggedCount > 0 ? ` (${flaggedCount})` : ''}` },
+            { id: 'typical', label: 'Typical' },
           ].map(f => (
             <button key={f.id} onClick={() => setFilter(f.id)}
-              style={{ padding: '0.75rem 1.25rem', borderRadius: '10px', border: `2px solid ${filter === f.id ? '#6366F1' : '#E2E8F0'}`, background: filter === f.id ? '#EEF2FF' : 'white', color: filter === f.id ? '#6366F1' : '#64748B', fontWeight: '700', fontFamily: 'var(--font-body)', cursor: 'pointer', fontSize: '0.9rem', transition: 'all 0.15s' }}>
+              style={{ padding: '0.5rem 0.875rem', borderRadius: '7px', border: `1.5px solid ${filter === f.id ? 'var(--primary)' : 'var(--border)'}`, background: filter === f.id ? 'var(--primary-light)' : 'white', color: filter === f.id ? 'var(--primary)' : 'var(--text-muted)', fontWeight: '600', fontFamily: 'Inter, sans-serif', cursor: 'pointer', fontSize: '0.8125rem', transition: 'all 0.15s' }}>
               {f.label}
             </button>
           ))}
@@ -256,16 +257,14 @@ const StudentManagement = () => {
                 : filtered.length === 0
                   ? (
                     <tr>
-                      <td colSpan={6} style={{ padding: '4rem', textAlign: 'center', color: '#94A3B8' }}>
-                        <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>
-                          {students.length === 0 ? '🎓' : '🔍'}
-                        </div>
-                        <p style={{ fontWeight: '700', margin: '0 0 0.5rem' }}>
+                      <td colSpan={6} style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                        <GraduationCapIcon size={28} style={{ color: 'var(--text-placeholder)', margin: '0 auto 0.75rem', display: 'block' }} />
+                        <p style={{ fontWeight: '600', margin: '0 0 0.5rem', fontSize: '0.9rem' }}>
                           {students.length === 0 ? 'No students yet.' : 'No students match your search.'}
                         </p>
                         {students.length === 0 && (
-                          <button className="btn btn-primary" style={{ marginTop: '0.75rem' }} onClick={() => setShowAdd(true)}>
-                            + Add your first student
+                          <button className="btn btn-primary" style={{ marginTop: '0.625rem', gap: '0.375rem' }} onClick={() => setShowAdd(true)}>
+                            <PlusIcon size={13} />Add your first student
                           </button>
                         )}
                       </td>
@@ -341,8 +340,11 @@ const StudentManagement = () => {
                               </Link>
                               <span style={{ color: '#E2E8F0' }}>|</span>
                               <button onClick={() => setConfirmDelete(s)}
-                                style={{ background: 'none', border: 'none', color: '#94A3B8', cursor: 'pointer', fontSize: '1rem', padding: '0', lineHeight: 1 }}
-                                title="Remove student">🗑️</button>
+                                style={{ background: 'none', border: 'none', color: 'var(--text-placeholder)', cursor: 'pointer', padding: '0.25rem', lineHeight: 1, display: 'flex', borderRadius: '4px', transition: 'color 0.15s' }}
+                                title="Remove student"
+                                onMouseEnter={e => e.currentTarget.style.color = '#EF4444'}
+                                onMouseLeave={e => e.currentTarget.style.color = 'var(--text-placeholder)'}>
+                                <Trash2Icon size={14} /></button>
                             </div>
                           </td>
                         </tr>
@@ -400,8 +402,8 @@ const StudentManagement = () => {
                     style={{ flex: 1, background: '#F1F5F9', color: '#64748B', border: 'none' }} disabled={adding}>
                     Cancel
                   </button>
-                  <button type="submit" className="btn btn-primary" style={{ flex: 2 }} disabled={adding}>
-                    {adding ? '⏳ Adding…' : '+ Add Student'}
+                  <button type="submit" className="btn btn-primary" style={{ flex: 2, gap: '0.375rem' }} disabled={adding}>
+                    {adding ? 'Adding…' : <><PlusIcon size={13} />Add student</>}
                   </button>
                 </div>
               </form>
@@ -414,8 +416,10 @@ const StudentManagement = () => {
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: '1rem' }}
             onClick={e => e.target === e.currentTarget && !deleting && setConfirmDelete(null)}>
             <div style={{ background: 'white', borderRadius: '24px', padding: '2.5rem', width: '100%', maxWidth: '420px', boxShadow: '0 25px 60px rgba(0,0,0,0.3)', textAlign: 'center' }}>
-              <div style={{ fontSize: '3.5rem', marginBottom: '1rem' }}>⚠️</div>
-              <h2 style={{ fontSize: '1.4rem', color: '#1E293B', margin: '0 0 0.75rem 0' }}>Remove Student?</h2>
+              <div style={{ background: '#FEE2E2', borderRadius: '8px', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 0.75rem' }}>
+                <AlertTriangleIcon size={20} style={{ color: '#EF4444' }} />
+              </div>
+              <h2 style={{ fontSize: '1.1rem', color: 'var(--text)', margin: '0 0 0.5rem', fontWeight: '700' }}>Remove student?</h2>
               <p style={{ color: '#64748B', margin: '0 0 2rem 0', lineHeight: '1.6' }}>
                 This will permanently remove <strong>{confirmDelete.full_name}</strong> from the roster. Their screening history will also be deleted.
               </p>
@@ -423,8 +427,8 @@ const StudentManagement = () => {
                 <button onClick={() => setConfirmDelete(null)} className="btn" style={{ flex: 1, background: '#F1F5F9', color: '#64748B', border: 'none' }} disabled={deleting}>
                   Cancel
                 </button>
-                <button onClick={handleDelete} className="btn" style={{ flex: 1, background: '#E11D48', color: 'white', border: 'none' }} disabled={deleting}>
-                  {deleting ? '⏳ Removing…' : '🗑️ Remove'}
+                <button onClick={handleDelete} className="btn" style={{ flex: 1, background: '#EF4444', color: 'white', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }} disabled={deleting}>
+                  {deleting ? 'Removing…' : <><Trash2Icon size={13} />Remove</>}
                 </button>
               </div>
             </div>

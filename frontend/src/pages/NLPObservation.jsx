@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
+import { AlertTriangleIcon, CheckCircleIcon, InfoIcon, BrainIcon, SendIcon } from '../components/icons';
 
 const LD_KEYWORDS = {
   dyslexia:    ['struggles', 'read', 'reverse', 'letter', 'spell', 'slow', 'alphabet', 'confuse', 'decode', 'phonics'],
@@ -10,16 +11,16 @@ const LD_KEYWORDS = {
   nvld:        ['social', 'map', 'puzzle', 'spatial', 'body language', 'transition', 'visual', 'routine'],
 };
 
-const ldColors = {
-  dyslexia:    { bg: '#FFF1F2', color: '#E11D48', label: 'Dyslexia' },
-  dysgraphia:  { bg: '#F5F3FF', color: '#7C3AED', label: 'Dysgraphia' },
-  dyscalculia: { bg: '#FFFBEB', color: '#D97706', label: 'Dyscalculia' },
-  apd:         { bg: '#EFF6FF', color: '#1D4ED8', label: 'APD' },
-  nvld:        { bg: '#ECFDF5', color: '#059669', label: 'NVLD' },
+const LD_META = {
+  dyslexia:    { label: 'Dyslexia',    color: '#6366F1', bg: '#EEF2FF' },
+  dyscalculia: { label: 'Dyscalculia', color: '#F59E0B', bg: '#FFFBEB' },
+  dysgraphia:  { label: 'Dysgraphia',  color: '#10B981', bg: '#ECFDF5' },
+  nvld:        { label: 'NVLD',        color: '#8B5CF6', bg: '#F5F3FF' },
+  apd:         { label: 'APD',         color: '#EF4444', bg: '#FEF2F2' },
 };
 
 const authFetch = (url, opts = {}) => {
-  const token = localStorage.getItem('access_token');
+  const token = sessionStorage.getItem('access_token');
   return fetch(url, {
     ...opts,
     headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}), ...opts.headers },
@@ -35,13 +36,13 @@ const NLPObservation = () => {
   const [submitted, setSubmitted] = useState(false);
   const [apiError, setApiError] = useState('');
   const navigate = useNavigate();
-  const role = localStorage.getItem('role') || 'teacher';
+  const role = sessionStorage.getItem('role') || 'teacher';
 
   const maxChars = 1000;
   const charCount = text.length;
 
   useEffect(() => {
-    const token = localStorage.getItem('access_token');
+    const token = sessionStorage.getItem('access_token');
     if (!token) { navigate('/login'); return; }
     authFetch('/api/students/rich')
       .then(r => r.json())
@@ -86,17 +87,14 @@ const NLPObservation = () => {
       <Sidebar role={role} />
       <div className="dashboard-main">
         {/* Header */}
-        <header style={{ marginBottom: '2.5rem' }}>
-          <span style={{ background: '#EEF2FF', color: '#6366F1', padding: '0.3rem 1rem', borderRadius: '99px', fontWeight: '800', fontSize: '0.8rem', display: 'inline-block', marginBottom: '0.75rem' }}>
-            AI-POWERED NLP ANALYSIS
-          </span>
-          <h1 style={{ fontSize: '2.25rem', color: '#1E293B', margin: '0 0 0.5rem 0' }}>Teacher Observation Notes</h1>
-          <p style={{ color: '#64748B', margin: 0 }}>Write your observations. Our AI will analyse the text for LD indicators in real-time.</p>
-        </header>
+          <h1 style={{ fontSize: '1.5rem', color: 'var(--text)', margin: '0 0 0.25rem', fontWeight: '800', letterSpacing: '-0.03em', display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
+            <BrainIcon size={20} style={{ color: 'var(--primary)' }} />Observation Notes
+          </h1>
+          <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: '0.875rem' }}>Write your observations. Our AI will analyse the text for LD indicators in real-time.</p>
 
         {apiError && (
-          <div style={{ background: '#FFF1F2', border: '2px solid #FECDD3', color: '#E11D48', borderRadius: '12px', padding: '0.85rem 1.1rem', marginBottom: '1.5rem', fontWeight: '700', fontSize: '0.9rem' }}>
-            ❌ {apiError}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#FEE2E2', border: '1.5px solid #FECACA', color: '#B91C1C', borderRadius: '8px', padding: '0.75rem 1rem', marginBottom: '1.25rem', fontWeight: '600', fontSize: '0.875rem' }}>
+            <AlertTriangleIcon size={14} /> {apiError}
           </div>
         )}
 
@@ -162,32 +160,27 @@ const NLPObservation = () => {
               </div>
             </div>
 
-            <button
-              type="submit"
-              className="btn btn-primary"
-              style={{ width: '100%', fontSize: '1.1rem', padding: '1.1rem' }}
-              disabled={loading || !selectedStudent || text.length < 20}
-            >
-              {submitted ? '✅ Submitted! Redirecting…' : loading ? '🧠 Analysing…' : '🚀 Analyse with AI'}
+            <button type="submit" className="btn btn-primary"
+              style={{ width: '100%', fontSize: '0.9375rem', padding: '0.75rem', gap: '0.5rem' }}
+              disabled={loading || !selectedStudent || text.length < 20}>
+              {submitted ? <><CheckCircleIcon size={14} />Submitted — redirecting…</> : loading ? <><BrainIcon size={14} />Analysing…</> : <><SendIcon size={14} />Analyse with AI</>}
             </button>
           </form>
 
           {/* Live Analysis Panel */}
           <div style={{ position: 'sticky', top: '2rem' }}>
-            <h3 style={{ fontSize: '1.3rem', marginBottom: '1.25rem', color: '#1E293B', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <span style={{ background: '#EEF2FF', padding: '0.3rem 0.5rem', borderRadius: '8px' }}>🔬</span>
+            <h3 style={{ fontSize: '1rem', marginBottom: '1rem', color: 'var(--text)', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: '700' }}>
               Live Detection
             </h3>
 
             {text.length < 10 ? (
-              <div style={{ background: '#F8FAFC', borderRadius: '16px', padding: '2.5rem', textAlign: 'center', border: '2px dashed #E2E8F0' }}>
-                <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📝</div>
-                <p style={{ color: '#94A3B8', fontWeight: '600', margin: 0 }}>Start typing your observations to see live LD keyword detection.</p>
+              <div style={{ background: '#F8FAFC', borderRadius: '10px', padding: '2rem', textAlign: 'center', border: '2px dashed #E2E8F0' }}>
+                <p style={{ color: 'var(--text-muted)', fontWeight: '600', margin: 0, fontSize: '0.875rem' }}>Start typing your observations to see live LD keyword detection.</p>
               </div>
             ) : detectedFlags.length === 0 ? (
-              <div style={{ background: '#ECFDF5', borderRadius: '16px', padding: '2rem', textAlign: 'center', border: '2px solid #A7F3D0' }}>
-                <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>✅</div>
-                <p style={{ color: '#059669', fontWeight: '700', margin: 0 }}>No LD indicators detected yet. Try adding more specific observations.</p>
+              <div style={{ background: '#ECFDF5', borderRadius: '10px', padding: '1.5rem', textAlign: 'center', border: '1.5px solid #A7F3D0', display: 'flex', alignItems: 'center', gap: '0.75rem', justifyContent: 'center' }}>
+                <CheckCircleIcon size={18} style={{ color: '#059669' }} />
+                <p style={{ color: '#059669', fontWeight: '700', margin: 0, fontSize: '0.875rem' }}>No LD indicators detected yet. Try adding more specific observations.</p>
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -210,9 +203,9 @@ const NLPObservation = () => {
               </div>
             )}
 
-            <div style={{ background: '#EEF2FF', borderRadius: '14px', padding: '1.25rem', marginTop: '1.25rem', display: 'flex', gap: '0.75rem' }}>
-              <span style={{ fontSize: '1.25rem', flexShrink: 0 }}>ℹ️</span>
-              <p style={{ color: '#4338CA', fontSize: '0.88rem', margin: 0, lineHeight: '1.6' }}>
+            <div style={{ background: '#EEF2FF', borderRadius: '10px', padding: '1rem', marginTop: '1rem', display: 'flex', gap: '0.625rem', alignItems: 'flex-start' }}>
+              <InfoIcon size={14} style={{ color: '#4338CA', flexShrink: 0, marginTop: '0.1rem' }} />
+              <p style={{ color: '#4338CA', fontSize: '0.8125rem', margin: 0, lineHeight: '1.6' }}>
                 The AI analyses your notes using NLP keyword extraction. More detailed observations provide higher accuracy predictions.
               </p>
             </div>
