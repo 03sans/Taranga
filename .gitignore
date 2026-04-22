@@ -24,3 +24,10 @@ env/
 # DB files
 *.db
 *.sqlite3
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/

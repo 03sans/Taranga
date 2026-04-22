@@ -6,9 +6,12 @@ Tests full flows: registration → login → student screening → predictions.
 import pytest
 import tempfile
 import os
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, StaticPool
 from sqlalchemy.orm import sessionmaker
 from fastapi.testclient import TestClient
+import app.models
+from app.core.database import Base, engine
+from app.core.deps import get_db
 
 # ─────────────────────────────────────────────────────────────────────────────
 # FIXTURES
@@ -17,10 +20,22 @@ from fastapi.testclient import TestClient
 @pytest.fixture(scope="function")
 def db_engine():
     """Create an in-memory SQLite database for tests."""
-    engine = create_engine("sqlite:///:memory:")
-    from app.core.database import Base
-    Base.metadata.create_all(bind=engine)
-    return engine
+    test_engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    # Explicitly import all models to ensure they are registered with Base.metadata
+    import app.models.user
+    import app.models.student
+    import app.models.screening
+    import app.models.prediction
+    import app.models.activity
+    import app.models.progress
+    import app.models.assignment
+    
+    Base.metadata.create_all(bind=test_engine)
+    return test_engine
 
 
 @pytest.fixture(scope="function")
@@ -63,8 +78,12 @@ class TestAuthentication:
         assert response.status_code == 200
         assert response.json()["status"] == "ok"
 
-    def test_register_teacher(self, client):
+    def test_register_teacher(self, client, db_session):
         """Teacher registration should succeed."""
+        from sqlalchemy import inspect
+        inspector = inspect(db_session.get_bind())
+        print(f"DEBUG: Current tables: {inspector.get_table_names()}")
+        
         payload = {
             "full_name": "John Teacher",
             "email": "john@example.com",

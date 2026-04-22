@@ -185,7 +185,7 @@ const NLPObservation = () => {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 {detectedFlags.map(({ ld, count, words }) => {
-                  const cfg = ldColors[ld];
+                  const cfg = LD_META[ld];
                   return (
                     <div key={ld} style={{ background: cfg.bg, border: `2px solid ${cfg.color}33`, borderRadius: '14px', padding: '1.25rem' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>

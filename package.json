@@ -1,0 +1,23 @@
+{
+  "name": "taranga",
+  "version": "1.0.0",
+  "description": "Taranga is a web-based AI-powered system designed to support early screening, analysis, and intervention for learning difficulties such as dyslexia, dyscalculia, dysgraphia, non-verbal learning disability, and auditory processing disorder.",
+  "main": "index.js",
+  "scripts": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/03sans/Taranga.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/03sans/Taranga/issues"
+  },
+  "homepage": "https://github.com/03sans/Taranga#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.59.1",
+    "@types/node": "^25.6.0"
+  }
+}

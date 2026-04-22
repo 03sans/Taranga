@@ -210,13 +210,14 @@ def submit_nlp_observation(
 
     nlp_result = analyze_observation_notes(payload.notes)
     
+    probs = nlp_result["probabilities"]
     prediction = PredictionResult(
         screening_id=screening.id,
-        dyslexia_score=85.0 if nlp_result["flag_counts"]["dyslexia"] > 0 else 0.0,
-        dyscalculia_score=85.0 if nlp_result["flag_counts"]["dyscalculia"] > 0 else 0.0,
-        dysgraphia_score=85.0 if nlp_result["flag_counts"]["dysgraphia"] > 0 else 0.0,
-        nvld_score=85.0 if nlp_result["flag_counts"]["nvld"] > 0 else 0.0,
-        apd_score=85.0 if nlp_result["flag_counts"]["apd"] > 0 else 0.0,
+        dyslexia_score=probs["dyslexia"],
+        dyscalculia_score=probs["dyscalculia"],
+        dysgraphia_score=probs["dysgraphia"],
+        nvld_score=probs["nvld"],
+        apd_score=probs["apd"],
     )
     db.add(prediction)
     db.commit()
